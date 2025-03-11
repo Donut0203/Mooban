@@ -1,0 +1,241 @@
+const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};const jwt = require('jsonwebtoken');
+
+/**
+ * Middleware to verify JWT token
+ * This middleware extracts the user ID from the JWT token and adds it to the request object
+ */
+module.exports = (req, res, next) => {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Format should be "Bearer [token]"
+    const token = authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+    
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+    
+    // Continue to the next middleware or route handler
+    next();
+  } catch (error) {
+    console.error('Token verification error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};

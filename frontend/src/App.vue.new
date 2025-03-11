@@ -1,0 +1,3704 @@
+<template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style><template>
+  <div id="app">
+    <div class="app-container" v-if="isLoggedIn">
+      <!-- Vertical sidebar navigation -->
+      <div class="sidebar-nav">
+        <div class="sidebar-profile">
+          <div class="profile-image">
+            <img :src="profileImageUrl || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image">
+          </div>
+          <div class="profile-info">
+            <h3>{{ userFullName || userEmail || 'Natcha Boonmee' }}</h3>
+            <span class="user-role" :class="'role-' + userStatus">{{ formatRole(userStatus) }}</span>
+            <div class="user-details">
+              <div class="info-item" v-if="userId">
+                <span class="info-label">User ID:</span>
+                <span class="info-value">{{ userId }}</span>
+              </div>
+              <div class="info-item" v-if="userEmail">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ userEmail }}</span>
+              </div>
+              <div class="info-item" v-if="userPhone">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ userPhone }}</span>
+              </div>
+              <div class="info-item" v-if="userAddress">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ userAddress }}</span>
+              </div>
+            </div>
+            <router-link to="/profile" class="edit-profile-btn">แก้ไขโปรไฟล์</router-link>
+          </div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-menu">
+          <router-link to="/profile" class="sidebar-menu-item">User Profile</router-link>
+          <router-link to="/pending-users" class="sidebar-menu-item">Pending Users all</router-link>
+          <router-link v-if="isHeadmanOrAssistant" to="/all-users" class="sidebar-menu-item">User Management</router-link>
+          <router-link to="/" class="sidebar-menu-item">แดชบอร์ด</router-link>
+        </div>
+      </div>
+      
+      <!-- Main content area with top navigation -->
+      <div class="main-content-area">
+        <nav class="top-nav">
+          <div class="nav-container">
+            <div class="nav-left">
+              <h2>Village Management System</h2>
+            </div>
+            <div class="nav-right">
+              <div class="notification-container" v-if="isHeadmanOrAssistant && pendingUsers.length > 0">
+                <button class="notification-btn" @click="toggleNotifications">
+                  Pending Approvals ({{ pendingUsers.length }})
+                </button>
+                <div class="notification-dropdown" v-if="showNotifications">
+                  <h3>Pending Users</h3>
+                  <div v-for="user in pendingUsers" :key="user.user_id" class="pending-user">
+                    <div>
+                      <strong>{{ user.first_name }} {{ user.last_name }}</strong>
+                      <div>{{ user.user_email }}</div>
+                      <div>Status: {{ user.status }}</div>
+                    </div>
+                    <button class="approve-btn" @click="approveUser(user.user_id)">Approve</button>
+                  </div>
+                  <div v-if="pendingUsers.length === 0" class="no-pending">
+                    No pending users
+                  </div>
+                </div>
+              </div>
+              <button class="logout-btn" @click="logout">Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <div class="content-wrapper">
+          <router-view @user-approved="fetchPendingUsers"/>
+        </div>
+      </div>
+    </div>
+    <router-view v-else @user-approved="fetchPendingUsers"/>
+  </div>
+</template>
+
+<script>
+import api from '@/services/api';
+
+export default {
+  name: 'App',
+  data() {
+    // Get stored values
+    const storedUserId = localStorage.getItem('userId') || '';
+    const storedEmail = localStorage.getItem('email') || '';
+    let storedStatus = localStorage.getItem('userStatus') || '';
+    
+    return {
+      pendingUsers: [],
+      showNotifications: false,
+      loading: false,
+      userId: storedUserId,
+      userEmail: storedEmail,
+      userStatus: storedStatus,
+      userFullName: 'Natcha Boonmee',
+      userPhone: '0835364833',
+      userAddress: 'Rmutt',
+      profileImageUrl: localStorage.getItem('profileImage') || ''
+    };
+  },
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('token');
+    },
+    isHeadmanOrAssistant() {
+      const status = localStorage.getItem('userStatus');
+      return status === 'headman' || status === 'assistant';
+    }
+  },
+  methods: {
+    formatRole(role) {
+      if (!role) return 'User';
+      return role.charAt(0).toUpperCase() + role.slice(1);
+    },
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    async fetchPendingUsers() {
+      if (!this.isLoggedIn || !this.isHeadmanOrAssistant) return;
+
+      try {
+        this.loading = true;
+        const response = await api.getPendingUsers();
+        this.pendingUsers = response.data.pendingUsers || [];
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async approveUser(userId) {
+      try {
+        await api.approveUser(userId);
+        // Remove the approved user from the list
+        this.pendingUsers = this.pendingUsers.filter(user => user.user_id !== userId);
+        // Emit event to refresh data if needed
+        this.$emit('user-approved');
+      } catch (error) {
+        console.error('Error approving user:', error);
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userStatus');
+      this.showNotifications = false;
+      this.$router.push('/login');
+    },
+    async fetchUserProfile() {
+      try {
+        const response = await api.getUserProfile();
+        const user = response.data.user;
+        
+        if (user) {
+          this.userEmail = user.user_email || this.userEmail;
+          this.userStatus = user.status || this.userStatus;
+          this.userFullName = user.first_name && user.last_name ? 
+            `${user.first_name} ${user.last_name}` : this.userFullName;
+          this.userPhone = user.phone || this.userPhone;
+          this.userAddress = user.address || this.userAddress;
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+  },
+  watch: {
+    isLoggedIn(newVal) {
+      if (newVal) {
+        this.fetchPendingUsers();
+      }
+    }
+  },
+  mounted() {
+    if (this.isLoggedIn) {
+      this.fetchPendingUsers();
+      this.fetchUserProfile();
+    }
+  }
+}
+</script>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  width: 250px;
+  background-color: #343a40;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.sidebar-profile {
+  padding: 20px 15px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.user-role {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.role-headman {
+  background-color: #007bff;
+  color: white;
+}
+
+.role-assistant {
+  background-color: #28a745;
+  color: white;
+}
+
+.role-villager, .role-pending, .role-undefined {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.user-details {
+  margin: 15px 0;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.info-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.info-label {
+  font-weight: bold;
+  margin-right: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.edit-profile-btn {
+  display: inline-block;
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.edit-profile-btn:hover {
+  background-color: #0069d9;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0;
+}
+
+.sidebar-menu {
+  padding: 15px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-menu-item {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  padding: 12px 20px;
+  transition: all 0.3s;
+  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+}
+
+.sidebar-menu-item.router-link-active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-left-color: #007bff;
+  font-weight: bold;
+}
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  margin-left: 250px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-nav {
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  height: 60px;
+}
+
+.nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  height: 100%;
+}
+
+.nav-left, .nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.nav-left h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nav-right {
+  gap: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.content-wrapper {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+}
+
+button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+.logout-btn {
+  background-color: #f44336;
+}
+
+.logout-btn:hover {
+  background-color: #d32f2f;
+}
+
+.notification-btn {
+  background-color: #ff9800;
+  position: relative;
+}
+
+.notification-btn:hover {
+  background-color: #e68a00;
+}
+
+.notification-container {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 300px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  z-index: 1000;
+  text-align: left;
+  margin-top: 5px;
+}
+
+.notification-dropdown h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.pending-user {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-user:last-child {
+  border-bottom: none;
+}
+
+.approve-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.no-pending {
+  padding: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.form-container {
+  background-color: #f2f2f2;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+}
+
+.success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.link {
+  color: #4CAF50;
+  text-decoration: none;
+  margin-top: 15px;
+  display: inline-block;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style>

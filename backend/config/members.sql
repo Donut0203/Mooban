@@ -1,0 +1,23 @@
+-- Create members table
+CREATE TABLE IF NOT EXISTS members (
+  member_id INT(11) NOT NULL AUTO_INCREMENT,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  bank_name VARCHAR(100) NOT NULL,
+  bank_account VARCHAR(50) NOT NULL,
+  national_id VARCHAR(20) NOT NULL,
+  address_line1 TEXT NOT NULL,
+  subdistrict VARCHAR(100) DEFAULT NULL,
+  district VARCHAR(100) DEFAULT NULL,
+  province VARCHAR(100) DEFAULT NULL,
+  postal_code VARCHAR(10) DEFAULT NULL,
+  id_card_copy VARCHAR(255) NOT NULL,
+  house_registration_copy VARCHAR(255) NOT NULL,
+  balance DECIMAL(15,2) DEFAULT 0.00,
+  created_by INT(11) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_by INT(11) DEFAULT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (member_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
