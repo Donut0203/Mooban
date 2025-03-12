@@ -4,10 +4,10 @@
       <!-- Vertical sidebar navigation -->
       <div class="sidebar-nav">
         <div class="sidebar-profile">
-          <div class="profile-image">
+        <!--   <div class="profile-image"> -->
             <!-- ใช้ getFullImageUrl สำหรับโหลดรูปจาก backend -->
-            <img :src="getFullImageUrl(profileImageUrl) || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image" @error="handleImageError" class="profile-img">
-          </div>
+           <!-- <img :src="getFullImageUrl(profileImageUrl) || 'https://via.placeholder.com/256x256?text=Profile'" alt="Profile Image" @error="handleImageError" class="profile-img"> -->
+         <!-- </div> -->
 
           <div class="profile-info">
             <h3>{{ userFullName || userEmail || '' }}</h3>

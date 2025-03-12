@@ -33,7 +33,7 @@ const upload = multer({
 // Get all members
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const [members] = await db.query('SELECT * FROM members ORDER BY member_id DESC');
+    const [members] = await db.query('SELECT * FROM member ORDER BY member_id DESC');
     if (!members || members.length === 0) {
       return res.status(404).json({ message: 'ไม่พบข้อมูลสมาชิก' });
     }

@@ -171,7 +171,7 @@ export default {
         });
 
         // Redirect to home page after successful registration
-        window.location.href = '/';
+        window.location.href = '/login';
       } catch (error) {
         console.error('Registration error:', error);
         this.error = error.response?.data?.message || 'Registration failed. Please try again.';

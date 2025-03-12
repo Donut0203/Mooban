@@ -88,7 +88,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -620,7 +620,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'test@example.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -770,7 +770,7 @@ exports.login = async (req, res) => {
         status: user.status || 'villager'
       },
       process.env.JWT_SECRET || 'your_jwt_secret_key',
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     res.status(200).json({
@@ -875,7 +875,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -1466,7 +1466,7 @@ exports.login = async (req, res) => {
         status: user.status || 'villager'
       },
       process.env.JWT_SECRET || 'your_jwt_secret_key',
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     res.status(200).json({
@@ -1571,7 +1571,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -2162,7 +2162,7 @@ exports.login = async (req, res) => {
         status: user.status || 'villager'
       },
       process.env.JWT_SECRET || 'your_jwt_secret_key',
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     res.status(200).json({
@@ -2268,7 +2268,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -2792,7 +2792,7 @@ exports.login = async (req, res) => {
         status: user.status || 'villager'
       },
       process.env.JWT_SECRET || 'your_jwt_secret_key',
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     res.status(200).json({
@@ -2897,7 +2897,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -3056,7 +3056,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.user_id, email: user.user_email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(200).json({
@@ -3155,7 +3155,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -3314,7 +3314,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.user_id, email: user.user_email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(200).json({
@@ -3415,7 +3415,7 @@ exports.register = async (req, res) => {
     const token = jwt.sign(
       { userId, email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(201).json({
@@ -3574,7 +3574,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.user_id, email: user.user_email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
     
     res.status(200).json({
@@ -3708,7 +3708,7 @@ exports.register = async (req, res) => {
         status: userStatus  // Include user status in the token
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     res.status(201).json({
@@ -3844,7 +3844,7 @@ exports.login = async (req, res) => {
         status: user.status  // Include user status in the token
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '300d' }
     );
 
     // Special case for user ID 15 - ensure they have headman status

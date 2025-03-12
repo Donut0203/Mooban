@@ -222,6 +222,11 @@
             <div class="detail-label">วันที่แก้ไขล่าสุด:</div>
             <div class="detail-value">{{ formatDate(selectedMember.updated_at) }}</div>
           </div>
+           <!-- ปุ่มปิด -->
+          <button class="btn-close" @click="showViewModal = false">ปิด</button>
+
+          <!-- ปุ่มปริ้น PDF -->
+          <button class="btn-print" @click="printPDF">พิมพ์ PDF</button>
         </div>
       </div>
     </div>
@@ -247,6 +252,8 @@
 
 <script>
 import api from '@/services/api';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export default {
   name: 'MemberManagement',
@@ -282,14 +289,13 @@ export default {
       if (!this.searchQuery) {
         return this.members;
       }
-      
       const query = this.searchQuery.toLowerCase();
       return this.members.filter(member => {
         return member.member_id.toString().includes(query) ||
-               member.first_name.toLowerCase().includes(query) ||
-               member.last_name.toLowerCase().includes(query) ||
-               member.phone.includes(query) ||
-               member.national_id.includes(query);
+          member.first_name.toLowerCase().includes(query) ||
+          member.last_name.toLowerCase().includes(query) ||
+          member.phone.includes(query) ||
+          member.national_id.includes(query);
       });
     }
   },
@@ -304,7 +310,7 @@ export default {
         alert('ไม่สามารถโหลดข้อมูลสมาชิกได้');
       }
     },
-    
+
     // จัดการการอัพโหลดรูปภาพ
     handleIdCardUpload(event) {
       const file = event.target.files[0];
@@ -312,19 +318,17 @@ export default {
         this.uploadFile(file, 'id_card_copy');
       }
     },
-    
     handleHouseRegUpload(event) {
       const file = event.target.files[0];
       if (file) {
         this.uploadFile(file, 'house_registration_copy');
       }
     },
-    
+
     // อัพโหลดไฟล์
     async uploadFile(file, fieldName) {
       const formData = new FormData();
       formData.append('file', file);
-
       try {
         const response = await api.uploadFile(formData);
         this.formData[fieldName] = response.data.fileUrl;
@@ -333,7 +337,7 @@ export default {
         alert('ไม่สามารถอัพโหลดไฟล์ได้');
       }
     },
-    
+
     // ส่งฟอร์ม
     async submitForm() {
       try {
@@ -346,7 +350,6 @@ export default {
           await api.createMember(this.formData);
           alert('เพิ่มสมาชิกใหม่เรียบร้อยแล้ว');
         }
-
         this.closeForm();
         this.loadMembers();
       } catch (error) {
@@ -354,26 +357,26 @@ export default {
         alert('ไม่สามารถบันทึกข้อมูลได้');
       }
     },
-    
+
     // ดูรายละเอียดสมาชิก
     viewMember(member) {
       this.selectedMember = { ...member };
       this.showViewModal = true;
     },
-    
+
     // แก้ไขข้อมูลสมาชิก
     editMember(member) {
       this.isEditing = true;
       this.formData = { ...member };
       this.showAddForm = true;
     },
-    
+
     // ยืนยันการลบ
     confirmDelete(member) {
       this.selectedMember = member;
       this.showDeleteModal = true;
     },
-    
+
     // ลบสมาชิก
     async deleteMember() {
       try {
@@ -386,7 +389,7 @@ export default {
         alert('ไม่สามารถลบข้อมูลสมาชิกได้');
       }
     },
-    
+
     // ปิดฟอร์ม
     closeForm() {
       this.showAddForm = false;
@@ -408,34 +411,28 @@ export default {
         balance: 0
       };
     },
-    
+
     // จัดรูปแบบที่อยู่
     formatAddress(member) {
       let address = member.address_line1 || '';
-      
       if (member.subdistrict) {
         address += ` ต.${member.subdistrict}`;
       }
-      
       if (member.district) {
         address += ` อ.${member.district}`;
       }
-      
       if (member.province) {
         address += ` จ.${member.province}`;
       }
-      
       if (member.postal_code) {
         address += ` ${member.postal_code}`;
       }
-      
       return address;
     },
-    
+
     // จัดรูปแบบวันที่
     formatDate(dateString) {
       if (!dateString) return '-';
-      
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('th-TH', {
         year: 'numeric',
@@ -445,20 +442,125 @@ export default {
         minute: '2-digit'
       }).format(date);
     },
-    
+
     // จัดรูปแบบเงิน
     formatCurrency(amount) {
       return new Intl.NumberFormat('th-TH', {
         style: 'currency',
         currency: 'THB'
       }).format(amount || 0);
+    },
+
+    // พิมพ์ PDF
+    async printPDF() {
+      const doc = new jsPDF("p", "mm", "a4");
+
+      // กำหนดเส้นทางไฟล์ฟอนต์ที่ถูกต้องจาก public
+      const fontUrl = '/THSarabunNew.ttf'; // เส้นทางที่เข้าถึงไฟล์จาก public
+
+      // ฟอนต์ที่คุณต้องการใช้ใน jsPDF
+      const fontName = "THSarabun";
+
+      // เพิ่มฟอนต์จาก public (ใช้ addFileToVFS เพื่อให้ jsPDF รับรู้ฟอนต์)
+      await doc.addFileToVFS(fontName, fontUrl);
+      doc.addFont(fontUrl, fontName, "normal");  // เพิ่มฟอนต์ให้กับ jsPDF
+      doc.setFont(fontName);  // กำหนดฟอนต์ที่ต้องการใช้
+
+      // เพิ่มเนื้อหาลงใน PDF
+      doc.setFontSize(18);
+      doc.text("รายละเอียดสมาชิก", 15, 20);
+
+      // เริ่มข้อมูลสมาชิก
+      doc.setFontSize(12);
+      let y = 30;
+
+
+    const addText = (label, value) => {
+    //  doc.setFont("THSarabun", "bold");
+      doc.text(`${label}: `, 15, y);
+     // doc.setFont("THSarabun", "normal");
+      doc.text(value ? value.toString() : "-", 55, y);
+      y += 8;
+    };
+
+      addText("รหัสสมาชิก", this.selectedMember.member_id);
+      addText("ชื่อ-นามสกุล", `${this.selectedMember.first_name} ${this.selectedMember.last_name}`);
+      addText("เบอร์โทรศัพท์", this.selectedMember.phone);
+      addText("ธนาคาร", this.selectedMember.bank_name);
+      addText("เลขบัญชี", this.selectedMember.bank_account);
+      addText("เลขบัตรประชาชน", this.selectedMember.national_id);
+      addText("ที่อยู่", this.formatAddress(this.selectedMember));
+      addText("ยอดคงเหลือ", this.formatCurrency(this.selectedMember.balance));
+      addText("ผู้สร้างข้อมูล", this.selectedMember.created_by);
+      addText("วันที่สร้างข้อมูล", this.formatDate(this.selectedMember.created_at));
+      addText("ผู้แก้ไขล่าสุด", this.selectedMember.updated_by);
+      addText("วันที่แก้ไขล่าสุด", this.formatDate(this.selectedMember.updated_at));
+
+      // เพิ่มรูปภาพ (สำเนาบัตรประชาชน & ทะเบียนบ้าน)
+const addImage = async (imgSrc, label) => {
+  if (imgSrc) {
+    try {
+      const img = await this.loadImage(imgSrc);
+      doc.setFont("THSarabun", "bold");
+      doc.text(label, 15, y + 5);
+      doc.addImage(img, "JPEG", 15, y + 10, 80, 50);  // ใช้ Base64 ที่ได้
+      y += 65;
+    } catch (error) {
+      console.error(`โหลดรูป ${label} ไม่สำเร็จ`, error);
     }
+  }
+};
+
+      await addImage(this.selectedMember.id_card_copy, "สำเนาบัตรประชาชน");
+      await addImage(this.selectedMember.house_registration_copy, "สำเนาทะเบียนบ้าน");
+
+      // บันทึกไฟล์ PDF
+      doc.save(`Member_${this.selectedMember.member_id}.pdf`);
+      
+    },
+
+    // โหลดรูปภาพ
+loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";  // รองรับการดึงภาพจากโดเมนต่าง ๆ
+    img.src = `http://localhost:8080/uploads/${src}`;  // ปรับ URL ตามที่เซิร์ฟเวอร์สามารถเข้าถึงได้
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      
+      // ตรวจสอบชนิดของไฟล์ และแปลงเป็น Base64 ตามประเภทของไฟล์
+      const fileExtension = src.split('.').pop().toLowerCase();
+      let mimeType = "image/jpg";  // Default เป็น JPEG
+
+      if (fileExtension === "png") {
+        mimeType = "image/png";  // หากเป็น PNG ให้ใช้ image/png
+      }
+
+      const base64Image = canvas.toDataURL(mimeType);
+      
+      // พิมพ์ Base64 ในคอนโซลเพื่อการตรวจสอบ
+      console.log(base64Image);
+
+      resolve(base64Image);
+    };
+    img.onerror = reject;
+  });
+}
+
   },
-  mounted() {
+
+  created() {
     this.loadMembers();
   }
 };
 </script>
+
+
+
 
 <style scoped>
 /* สไตล์ทั่วไป */
