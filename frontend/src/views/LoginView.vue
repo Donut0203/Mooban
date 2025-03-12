@@ -389,7 +389,7 @@ export default {
 
         // If user is headman or assistant, redirect to all-users page
         if (userStatus === 'headman' || userStatus === 'assistant') {
-          redirectPath = '/all-users';
+          redirectPath = '/';
         }
 
         console.log('Login successful, redirecting to:', redirectPath);

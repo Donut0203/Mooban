@@ -12,7 +12,7 @@ const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
-// Middleware
+// ตั้งค่า middleware
 app.use(cors({
   origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:5000', 'http://localhost:5001', 'http://localhost:5002', 'http://localhost:4000'],
   credentials: true
@@ -37,7 +37,6 @@ try {
   console.log('Uploads directory has proper read/write permissions');
 } catch (err) {
   console.error('Uploads directory permission error:', err);
-  // พยายามแก้ไขสิทธิ์
   try {
     fs.chmodSync(uploadsDir, 0o755);
     console.log('Fixed uploads directory permissions');
@@ -75,20 +74,42 @@ app.get('/api', (req, res) => {
   });
 });
 
+// เพิ่ม API สำหรับ /loan
+app.post('/loan', (req, res) => {
+  // รับข้อมูลจาก frontend ที่ส่งมา
+  const { loan, guarantors } = req.body;
+
+  // แสดงข้อมูลที่รับมาใน console (สามารถลบออกเมื่อไม่ต้องการแล้ว)
+  console.log('Received loan data:', loan);
+  console.log('Received guarantors data:', guarantors);
+
+  // ตรวจสอบข้อมูลว่ามีครบหรือไม่ เช่น จำนวนผู้ค้ำประกันต้องเป็น 2 คน
+  if (!loan || !guarantors || guarantors.length !== 2) {
+    return res.status(400).json({ message: 'ข้อมูลไม่ครบถ้วนหรือผิดพลาด' });
+  }
+
+  // ถ้าทุกอย่างถูกต้อง ส่งข้อมูลกลับไปให้ frontend
+  res.status(200).json({
+    message: 'ข้อมูลสินเชื่อและผู้ค้ำประกันได้รับแล้ว',
+    loanData: loan,
+    guarantorsData: guarantors
+  });
+});
+
 // Serve Vue.js frontend
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (isProduction) {
-  // In production, serve the built Vue.js files
+  // ถ้าเป็นโหมด production ให้บริการไฟล์ที่สร้างจาก Vue.js
   const vueDistPath = path.join(__dirname, '../frontend/dist');
   app.use(express.static(vueDistPath));
 
-  // For any route that doesn't start with /api, serve the Vue.js app
+  // สำหรับ route ที่ไม่ใช่ /api ให้ส่งไปยังหน้าเว็บของ Vue.js
   app.get(/^(?!\/api).*/, (req, res) => {
     res.sendFile(path.join(vueDistPath, 'index.html'));
   });
 } else {
-  // In development, proxy requests to the Vue.js dev server
+  // ถ้าเป็นโหมด development ให้ใช้ Vue.js dev server
   console.log('Running in development mode - frontend routes will be handled by Vue.js dev server');
 
   app.get(/^(?!\/api).*/, (req, res) => {

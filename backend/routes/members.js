@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); 
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const multer = require('multer');
@@ -22,7 +22,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: function(req, file, cb) {
-    // Accept only image files
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
       return cb(new Error('Only image files are allowed!'), false);
     }
@@ -47,7 +46,7 @@ router.get('/', verifyToken, async (req, res) => {
 // Get member by ID
 router.get('/:id', verifyToken, async (req, res) => {
   try {
-    const [members] = await db.query('SELECT * FROM members WHERE member_id = ?', [req.params.id]);
+    const [members] = await db.query('SELECT * FROM member WHERE member_id = ?', [req.params.id]);
     if (!members || members.length === 0) {
       return res.status(404).json({ message: 'ไม่พบข้อมูลสมาชิก' });
     }
@@ -65,6 +64,7 @@ router.post('/', verifyToken, async (req, res) => {
       first_name,
       last_name,
       phone,
+      birth_date,
       bank_name,
       bank_account,
       national_id,
@@ -79,13 +79,14 @@ router.post('/', verifyToken, async (req, res) => {
     } = req.body;
     
     const [result] = await db.query(
-      `INSERT INTO members (
-        first_name, last_name, phone, bank_name, bank_account, national_id,
+      `INSERT INTO member (
+        first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
         id_card_copy, house_registration_copy, balance, created_by, updated_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+
       [
-        first_name, last_name, phone, bank_name, bank_account, national_id,
+        first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
         id_card_copy, house_registration_copy, balance || 0, req.userId, req.userId
       ]
@@ -108,6 +109,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       first_name,
       last_name,
       phone,
+      birth_date,
       bank_name,
       bank_account,
       national_id,
@@ -122,10 +124,11 @@ router.put('/:id', verifyToken, async (req, res) => {
     } = req.body;
     
     const [result] = await db.query(
-      `UPDATE members SET
+      `UPDATE member SET
         first_name = ?,
         last_name = ?,
         phone = ?,
+        birth_date = ?,
         bank_name = ?,
         bank_account = ?,
         national_id = ?,
@@ -141,7 +144,7 @@ router.put('/:id', verifyToken, async (req, res) => {
         updated_at = NOW()
       WHERE member_id = ?`,
       [
-        first_name, last_name, phone, bank_name, bank_account, national_id,
+        first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
         id_card_copy, house_registration_copy, balance, req.userId, req.params.id
       ]
@@ -161,7 +164,7 @@ router.put('/:id', verifyToken, async (req, res) => {
 // Delete member
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const [result] = await db.query('DELETE FROM members WHERE member_id = ?', [req.params.id]);
+    const [result] = await db.query('DELETE FROM member WHERE member_id = ?', [req.params.id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'ไม่พบข้อมูลสมาชิก' });
     }

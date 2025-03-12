@@ -687,7 +687,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 99, email: 'locked@example.com', status: 'villager' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -706,7 +706,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'ma1234@gmail.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -1316,7 +1316,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'test@example.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -1383,7 +1383,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 99, email: 'locked@example.com', status: 'villager' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -1402,7 +1402,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'ma1234@gmail.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -2012,7 +2012,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'test@example.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -2079,7 +2079,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 99, email: 'locked@example.com', status: 'villager' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -2098,7 +2098,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'ma1234@gmail.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d' }
       );
 
       return res.status(200).json({
@@ -2709,7 +2709,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'test@example.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d'}
       );
 
       return res.status(200).json({
@@ -2728,7 +2728,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
         { userId: 19, email: 'ma1234@gmail.com', status: 'assistant' },
         process.env.JWT_SECRET || 'your_jwt_secret_key',
-        { expiresIn: '1h' }
+        { expiresIn: '300d'}
       );
 
       return res.status(200).json({

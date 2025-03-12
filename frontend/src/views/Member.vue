@@ -30,6 +30,11 @@
             </div>
             
             <div class="form-group">
+               <label for="birth_date">วันเกิด <span class="required">*</span></label>
+                <input type="date" id="birth_date" v-model="formData.birth_date" required>
+            </div>
+
+            <div class="form-group">
               <label for="national_id">หมายเลขบัตรประชาชน <span class="required">*</span></label>
               <input type="text" id="national_id" v-model="formData.national_id" required>
             </div>
@@ -123,6 +128,7 @@
             <th>รหัสสมาชิก</th>
             <th>ชื่อ-นามสกุล</th>
             <th>เบอร์โทรศัพท์</th>
+            <th>อายุ</th>
             <th>ธนาคาร</th>
             <th>เลขบัญชี</th>
             <th>เลขบัตรประชาชน</th>
@@ -136,6 +142,7 @@
             <td>{{ member.member_id }}</td>
             <td>{{ member.first_name }} {{ member.last_name }}</td>
             <td>{{ member.phone }}</td>
+            <td>{{ member.birth_date }}</td>
             <td>{{ member.bank_name }}</td>
             <td>{{ member.bank_account }}</td>
             <td>{{ member.national_id }}</td>
@@ -173,6 +180,10 @@
           <div class="detail-row">
             <div class="detail-label">เบอร์โทรศัพท์:</div>
             <div class="detail-value">{{ selectedMember.phone }}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">อายุ:</div>
+            <div class="detail-value">{{ selectedMember.birth_date }}</div>
           </div>
           <div class="detail-row">
             <div class="detail-label">ธนาคาร:</div>
@@ -250,23 +261,23 @@
   </div>
 </template>
 
+
 <script>
 import api from '@/services/api';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 export default {
-  name: 'MemberManagement',
   data() {
     return {
-      members: [],
+      showAddForm: false,
+      isEditing: false,
       formData: {
         first_name: '',
         last_name: '',
         phone: '',
+        birth_date: '',
+        national_id: '',
         bank_name: '',
         bank_account: '',
-        national_id: '',
         address_line1: '',
         subdistrict: '',
         district: '',
@@ -274,30 +285,29 @@ export default {
         postal_code: '',
         id_card_copy: '',
         house_registration_copy: '',
-        balance: 0
+        balance: 0,
       },
-      showAddForm: false,
+      members: [],  // กำหนดสมาชิก
+      searchQuery: '',
+      selectedMember: null,
       showViewModal: false,
-      showDeleteModal: false,
-      isEditing: false,
-      selectedMember: {},
-      searchQuery: ''
+      showDeleteModal: false
     };
   },
   computed: {
     filteredMembers() {
-      if (!this.searchQuery) {
-        return this.members;
-      }
-      const query = this.searchQuery.toLowerCase();
       return this.members.filter(member => {
-        return member.member_id.toString().includes(query) ||
-          member.first_name.toLowerCase().includes(query) ||
-          member.last_name.toLowerCase().includes(query) ||
-          member.phone.includes(query) ||
-          member.national_id.includes(query);
+        return (
+          member.first_name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+          member.last_name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+          member.phone.includes(this.searchQuery)
+        );
       });
     }
+  },
+  mounted() {
+    // โหลดข้อมูลสมาชิกเมื่อคอมโพเนนต์ถูกโหลด
+    this.loadMembers();
   },
   methods: {
     // โหลดข้อมูลสมาชิกทั้งหมด
@@ -315,13 +325,67 @@ export default {
     handleIdCardUpload(event) {
       const file = event.target.files[0];
       if (file) {
-        this.uploadFile(file, 'id_card_copy');
+        // ตรวจสอบขนาดไฟล์ (ไม่เกิน 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('ขนาดไฟล์ต้องไม่เกิน 5MB');
+          return;
+        }
+
+        // ตรวจสอบประเภทไฟล์
+        if (!file.type.match('image.*')) {
+          alert('กรุณาอัพโหลดไฟล์รูปภาพเท่านั้น');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          // บันทึกข้อมูลรูปภาพในรูปแบบ base64
+          this.formData.id_card_copy = reader.result;
+          console.log('ID card image loaded successfully');
+
+          // บันทึกลงใน localStorage เพื่อให้ข้อมูลไม่หายไป
+          if (this.formData.member_id) {
+            localStorage.setItem(`id_card_${this.formData.member_id}`, reader.result);
+          }
+        };
+        reader.onerror = () => {
+          console.error('Error reading file');
+          alert('เกิดข้อผิดพลาดในการอ่านไฟล์');
+        };
+        reader.readAsDataURL(file);
       }
     },
     handleHouseRegUpload(event) {
       const file = event.target.files[0];
       if (file) {
-        this.uploadFile(file, 'house_registration_copy');
+        // ตรวจสอบขนาดไฟล์ (ไม่เกิน 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('ขนาดไฟล์ต้องไม่เกิน 5MB');
+          return;
+        }
+
+        // ตรวจสอบประเภทไฟล์
+        if (!file.type.match('image.*')) {
+          alert('กรุณาอัพโหลดไฟล์รูปภาพเท่านั้น');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          // บันทึกข้อมูลรูปภาพในรูปแบบ base64
+          this.formData.house_registration_copy = reader.result;
+          console.log('House registration image loaded successfully');
+
+          // บันทึกลงใน localStorage เพื่อให้ข้อมูลไม่หายไป
+          if (this.formData.member_id) {
+            localStorage.setItem(`house_reg_${this.formData.member_id}`, reader.result);
+          }
+        };
+        reader.onerror = () => {
+          console.error('Error reading file');
+          alert('เกิดข้อผิดพลาดในการอ่านไฟล์');
+        };
+        reader.readAsDataURL(file);
       }
     },
 
@@ -341,15 +405,46 @@ export default {
     // ส่งฟอร์ม
     async submitForm() {
       try {
+        // บันทึกรูปภาพลงใน localStorage ก่อนส่งข้อมูลไปยังเซิร์ฟเวอร์
+        if (this.formData.id_card_copy && this.formData.id_card_copy.startsWith('data:image')) {
+          console.log('Saving ID card to localStorage');
+          if (this.formData.member_id) {
+            localStorage.setItem(`id_card_${this.formData.member_id}`, this.formData.id_card_copy);
+          }
+        }
+
+        if (this.formData.house_registration_copy && this.formData.house_registration_copy.startsWith('data:image')) {
+          console.log('Saving house registration to localStorage');
+          if (this.formData.member_id) {
+            localStorage.setItem(`house_reg_${this.formData.member_id}`, this.formData.house_registration_copy);
+          }
+        }
+
+        let response;
+
         if (this.isEditing) {
           // แก้ไขข้อมูลสมาชิก
-          await api.updateMember(this.formData.member_id, this.formData);
+          response = await api.updateMember(this.formData.member_id, this.formData);
           alert('แก้ไขข้อมูลสมาชิกเรียบร้อยแล้ว');
         } else {
           // เพิ่มสมาชิกใหม่
-          await api.createMember(this.formData);
+          response = await api.createMember(this.formData);
           alert('เพิ่มสมาชิกใหม่เรียบร้อยแล้ว');
+
+          // ถ้าเป็นการเพิ่มสมาชิกใหม่ ให้บันทึกรูปภาพลงใน localStorage ด้วย member_id ที่ได้จากเซิร์ฟเวอร์
+          if (response && response.data && response.data.member_id) {
+            const newMemberId = response.data.member_id;
+
+            if (this.formData.id_card_copy && this.formData.id_card_copy.startsWith('data:image')) {
+              localStorage.setItem(`id_card_${newMemberId}`, this.formData.id_card_copy);
+            }
+
+            if (this.formData.house_registration_copy && this.formData.house_registration_copy.startsWith('data:image')) {
+              localStorage.setItem(`house_reg_${newMemberId}`, this.formData.house_registration_copy);
+            }
+          }
         }
+
         this.closeForm();
         this.loadMembers();
       } catch (error) {
@@ -360,15 +455,260 @@ export default {
 
     // ดูรายละเอียดสมาชิก
     viewMember(member) {
+      // สร้างสำเนาข้อมูลสมาชิก
       this.selectedMember = { ...member };
+
+      // ตรวจสอบว่ามีรูปภาพใน localStorage หรือไม่
+      if (member.member_id) {
+        const idCardFromStorage = localStorage.getItem(`id_card_${member.member_id}`);
+        const houseRegFromStorage = localStorage.getItem(`house_reg_${member.member_id}`);
+
+        // ถ้ามีรูปภาพใน localStorage ให้ใช้รูปภาพนั้นแทน
+        if (idCardFromStorage) {
+          this.selectedMember.id_card_copy = idCardFromStorage;
+          console.log('Loaded ID card from localStorage');
+        }
+
+        if (houseRegFromStorage) {
+          this.selectedMember.house_registration_copy = houseRegFromStorage;
+          console.log('Loaded house registration from localStorage');
+        }
+      }
+
       this.showViewModal = true;
     },
 
     // แก้ไขข้อมูลสมาชิก
     editMember(member) {
       this.isEditing = true;
+
+      // สร้างสำเนาข้อมูลสมาชิก
       this.formData = { ...member };
+
+      // ตรวจสอบว่ามีรูปภาพใน localStorage หรือไม่
+      if (member.member_id) {
+        const idCardFromStorage = localStorage.getItem(`id_card_${member.member_id}`);
+        const houseRegFromStorage = localStorage.getItem(`house_reg_${member.member_id}`);
+
+        // ถ้ามีรูปภาพใน localStorage ให้ใช้รูปภาพนั้นแทน
+        if (idCardFromStorage) {
+          this.formData.id_card_copy = idCardFromStorage;
+          console.log('Loaded ID card from localStorage for editing');
+        }
+
+        if (houseRegFromStorage) {
+          this.formData.house_registration_copy = houseRegFromStorage;
+          console.log('Loaded house registration from localStorage for editing');
+        }
+      }
+
       this.showAddForm = true;
+    },
+
+    // พิมพ์ PDF
+    printPDF() {
+      if (!this.selectedMember) return;
+
+      // เตรียมข้อมูลสำหรับการพิมพ์
+      const printWindow = window.open('', '_blank');
+
+      if (!printWindow) {
+        alert('กรุณาอนุญาตให้เปิดหน้าต่างป๊อปอัพเพื่อพิมพ์เอกสาร');
+        return;
+      }
+
+      // สร้างสำเนาข้อมูลสมาชิก
+      const member = { ...this.selectedMember };
+
+      // ตรวจสอบว่ามีรูปภาพใน localStorage หรือไม่
+      if (member.member_id) {
+        const idCardFromStorage = localStorage.getItem(`id_card_${member.member_id}`);
+        const houseRegFromStorage = localStorage.getItem(`house_reg_${member.member_id}`);
+
+        // ถ้ามีรูปภาพใน localStorage ให้ใช้รูปภาพนั้นแทน
+        if (idCardFromStorage) {
+          member.id_card_copy = idCardFromStorage;
+          console.log('Using ID card from localStorage for printing');
+        }
+
+        if (houseRegFromStorage) {
+          member.house_registration_copy = houseRegFromStorage;
+          console.log('Using house registration from localStorage for printing');
+        }
+      }
+
+      // ตรวจสอบว่ามีรูปภาพหรือไม่
+      const hasIdCard = member.id_card_copy && member.id_card_copy.length > 0;
+      const hasHouseReg = member.house_registration_copy && member.house_registration_copy.length > 0;
+
+      // จัดรูปแบบที่อยู่และยอดเงินก่อนสร้าง HTML
+      const formattedAddress = this.formatAddress(member);
+      const formattedBalance = this.formatCurrency(member.balance);
+
+      // สร้าง HTML สำหรับการพิมพ์โดยใช้ DOM API แทนการใช้ string
+      printWindow.document.open();
+
+      // สร้าง DOCTYPE
+      const doctype = document.implementation.createDocumentType('html', '', '');
+      printWindow.document.appendChild(doctype);
+
+      // สร้าง HTML element
+      const html = printWindow.document.createElement('html');
+      printWindow.document.appendChild(html);
+
+      // สร้าง HEAD element
+      const head = printWindow.document.createElement('head');
+      html.appendChild(head);
+
+      // สร้าง TITLE element
+      const title = printWindow.document.createElement('title');
+      title.textContent = `ข้อมูลสมาชิก - ${member.member_id || ''}`;
+      head.appendChild(title);
+
+      // สร้าง META element
+      const meta = printWindow.document.createElement('meta');
+      meta.setAttribute('charset', 'utf-8');
+      head.appendChild(meta);
+
+      // สร้าง STYLE element
+      const style = printWindow.document.createElement('style');
+      style.textContent = `
+        body { font-family: "Sarabun", sans-serif; padding: 20px; line-height: 1.5; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .member-info { margin-bottom: 30px; }
+        .info-row { display: flex; margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px; }
+        .label { font-weight: bold; width: 200px; }
+        .value { flex: 1; }
+        .documents { margin-top: 30px; }
+        .document-section { margin-bottom: 30px; }
+        .document-image { max-width: 100%; height: auto; margin-top: 10px; border: 1px solid #ddd; page-break-inside: avoid; }
+        @media print { .no-print { display: none; } img { display: block; page-break-inside: avoid; max-width: 100% !important; } }
+      `;
+      head.appendChild(style);
+
+      // สร้าง BODY element
+      const body = printWindow.document.createElement('body');
+      html.appendChild(body);
+
+      // สร้าง HEADER
+      const header = printWindow.document.createElement('div');
+      header.className = 'header';
+      const h1 = printWindow.document.createElement('h1');
+      h1.textContent = 'ข้อมูลสมาชิก';
+      header.appendChild(h1);
+      body.appendChild(header);
+
+      // สร้าง MEMBER INFO
+      const memberInfo = printWindow.document.createElement('div');
+      memberInfo.className = 'member-info';
+      body.appendChild(memberInfo);
+
+      // สร้างฟังก์ชันสำหรับสร้าง info row
+      const createInfoRow = (label, value) => {
+        const row = printWindow.document.createElement('div');
+        row.className = 'info-row';
+
+        const labelDiv = printWindow.document.createElement('div');
+        labelDiv.className = 'label';
+        labelDiv.textContent = label;
+        row.appendChild(labelDiv);
+
+        const valueDiv = printWindow.document.createElement('div');
+        valueDiv.className = 'value';
+        valueDiv.textContent = value;
+        row.appendChild(valueDiv);
+
+        return row;
+      };
+
+      // เพิ่ม info rows
+      memberInfo.appendChild(createInfoRow('รหัสสมาชิก:', member.member_id || '-'));
+      memberInfo.appendChild(createInfoRow('ชื่อ-นามสกุล:', `${member.first_name || ''} ${member.last_name || ''}`));
+      memberInfo.appendChild(createInfoRow('เบอร์โทรศัพท์:', member.phone || '-'));
+      memberInfo.appendChild(createInfoRow('วันเกิด:', member.birth_date || '-'));
+      memberInfo.appendChild(createInfoRow('ธนาคาร:', member.bank_name || '-'));
+      memberInfo.appendChild(createInfoRow('เลขบัญชี:', member.bank_account || '-'));
+      memberInfo.appendChild(createInfoRow('เลขบัตรประชาชน:', member.national_id || '-'));
+      memberInfo.appendChild(createInfoRow('ที่อยู่:', formattedAddress || '-'));
+      memberInfo.appendChild(createInfoRow('ยอดคงเหลือ:', formattedBalance || '0.00 บาท'));
+
+      // สร้าง DOCUMENTS
+      const documents = printWindow.document.createElement('div');
+      documents.className = 'documents';
+      const h2 = printWindow.document.createElement('h2');
+      h2.textContent = 'เอกสารแนบ';
+      documents.appendChild(h2);
+      body.appendChild(documents);
+
+      // สร้างฟังก์ชันสำหรับสร้าง document section
+      const createDocumentSection = (title, imageSrc, alt) => {
+        const section = printWindow.document.createElement('div');
+        section.className = 'document-section';
+
+        const h3 = printWindow.document.createElement('h3');
+        h3.textContent = title;
+        section.appendChild(h3);
+
+        if (imageSrc) {
+          const img = printWindow.document.createElement('img');
+          img.src = imageSrc;
+          img.alt = alt;
+          img.className = 'document-image';
+          section.appendChild(img);
+        } else {
+          const p = printWindow.document.createElement('p');
+          p.textContent = `ไม่มีไฟล์${alt}`;
+          section.appendChild(p);
+        }
+
+        return section;
+      };
+
+      // เพิ่ม document sections
+      documents.appendChild(createDocumentSection('สำเนาบัตรประชาชน', hasIdCard ? member.id_card_copy : null, 'สำเนาบัตรประชาชน'));
+      documents.appendChild(createDocumentSection('สำเนาทะเบียนบ้าน', hasHouseReg ? member.house_registration_copy : null, 'สำเนาทะเบียนบ้าน'));
+
+      // สร้างปุ่มพิมพ์
+      const printButtonDiv = printWindow.document.createElement('div');
+      printButtonDiv.className = 'no-print';
+      printButtonDiv.style.marginTop = '30px';
+      printButtonDiv.style.textAlign = 'center';
+
+      const printButton = printWindow.document.createElement('button');
+      printButton.textContent = 'พิมพ์เอกสาร';
+      printButton.onclick = () => printWindow.print();
+
+      printButtonDiv.appendChild(printButton);
+      body.appendChild(printButtonDiv);
+
+      // สร้าง script สำหรับตรวจสอบการโหลดรูปภาพ
+      const script = printWindow.document.createElement('script');
+      script.textContent = `
+        window.addEventListener('load', function() {
+          console.log('All content loaded');
+
+          document.querySelectorAll('img').forEach(img => {
+            if (img.complete) {
+              console.log('Image already loaded:', img.alt);
+            } else {
+              img.onload = function() {
+                console.log('Image loaded:', img.alt);
+              };
+              img.onerror = function() {
+                console.error('Error loading image:', img.alt);
+                img.style.display = 'none';
+                const errorText = document.createElement('p');
+                errorText.textContent = 'ไม่สามารถโหลดรูปภาพได้';
+                errorText.style.color = 'red';
+                img.parentNode.appendChild(errorText);
+              };
+            }
+          });
+        });
+      `;
+      body.appendChild(script);
+
+      printWindow.document.close();
     },
 
     // ยืนยันการลบ
@@ -398,9 +738,10 @@ export default {
         first_name: '',
         last_name: '',
         phone: '',
+        birth_date: '',
+        national_id: '',
         bank_name: '',
         bank_account: '',
-        national_id: '',
         address_line1: '',
         subdistrict: '',
         district: '',
@@ -408,161 +749,33 @@ export default {
         postal_code: '',
         id_card_copy: '',
         house_registration_copy: '',
-        balance: 0
+        balance: 0,
       };
     },
-
-    // จัดรูปแบบที่อยู่
     formatAddress(member) {
-      let address = member.address_line1 || '';
-      if (member.subdistrict) {
-        address += ` ต.${member.subdistrict}`;
-      }
-      if (member.district) {
-        address += ` อ.${member.district}`;
-      }
-      if (member.province) {
-        address += ` จ.${member.province}`;
-      }
-      if (member.postal_code) {
-        address += ` ${member.postal_code}`;
-      }
-      return address;
+      return `${member.address_line1} ${member.subdistrict} ${member.district} ${member.province} ${member.postal_code}`;
     },
-
-    // จัดรูปแบบวันที่
+    formatCurrency(value) {
+      return value.toLocaleString('th-TH', { style: 'currency', currency: 'THB' });
+    },
     formatDate(dateString) {
-      if (!dateString) return '-';
+      if (!dateString) return '';
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('th-TH', {
+      return date.toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-      }).format(date);
-    },
-
-    // จัดรูปแบบเงิน
-    formatCurrency(amount) {
-      return new Intl.NumberFormat('th-TH', {
-        style: 'currency',
-        currency: 'THB'
-      }).format(amount || 0);
-    },
-
-    // พิมพ์ PDF
-    async printPDF() {
-      const doc = new jsPDF("p", "mm", "a4");
-
-      // กำหนดเส้นทางไฟล์ฟอนต์ที่ถูกต้องจาก public
-      const fontUrl = '/THSarabunNew.ttf'; // เส้นทางที่เข้าถึงไฟล์จาก public
-
-      // ฟอนต์ที่คุณต้องการใช้ใน jsPDF
-      const fontName = "THSarabun";
-
-      // เพิ่มฟอนต์จาก public (ใช้ addFileToVFS เพื่อให้ jsPDF รับรู้ฟอนต์)
-      await doc.addFileToVFS(fontName, fontUrl);
-      doc.addFont(fontUrl, fontName, "normal");  // เพิ่มฟอนต์ให้กับ jsPDF
-      doc.setFont(fontName);  // กำหนดฟอนต์ที่ต้องการใช้
-
-      // เพิ่มเนื้อหาลงใน PDF
-      doc.setFontSize(18);
-      doc.text("รายละเอียดสมาชิก", 15, 20);
-
-      // เริ่มข้อมูลสมาชิก
-      doc.setFontSize(12);
-      let y = 30;
-
-
-    const addText = (label, value) => {
-    //  doc.setFont("THSarabun", "bold");
-      doc.text(`${label}: `, 15, y);
-     // doc.setFont("THSarabun", "normal");
-      doc.text(value ? value.toString() : "-", 55, y);
-      y += 8;
-    };
-
-      addText("รหัสสมาชิก", this.selectedMember.member_id);
-      addText("ชื่อ-นามสกุล", `${this.selectedMember.first_name} ${this.selectedMember.last_name}`);
-      addText("เบอร์โทรศัพท์", this.selectedMember.phone);
-      addText("ธนาคาร", this.selectedMember.bank_name);
-      addText("เลขบัญชี", this.selectedMember.bank_account);
-      addText("เลขบัตรประชาชน", this.selectedMember.national_id);
-      addText("ที่อยู่", this.formatAddress(this.selectedMember));
-      addText("ยอดคงเหลือ", this.formatCurrency(this.selectedMember.balance));
-      addText("ผู้สร้างข้อมูล", this.selectedMember.created_by);
-      addText("วันที่สร้างข้อมูล", this.formatDate(this.selectedMember.created_at));
-      addText("ผู้แก้ไขล่าสุด", this.selectedMember.updated_by);
-      addText("วันที่แก้ไขล่าสุด", this.formatDate(this.selectedMember.updated_at));
-
-      // เพิ่มรูปภาพ (สำเนาบัตรประชาชน & ทะเบียนบ้าน)
-const addImage = async (imgSrc, label) => {
-  if (imgSrc) {
-    try {
-      const img = await this.loadImage(imgSrc);
-      doc.setFont("THSarabun", "bold");
-      doc.text(label, 15, y + 5);
-      doc.addImage(img, "JPEG", 15, y + 10, 80, 50);  // ใช้ Base64 ที่ได้
-      y += 65;
-    } catch (error) {
-      console.error(`โหลดรูป ${label} ไม่สำเร็จ`, error);
+      });
     }
   }
 };
 
-      await addImage(this.selectedMember.id_card_copy, "สำเนาบัตรประชาชน");
-      await addImage(this.selectedMember.house_registration_copy, "สำเนาทะเบียนบ้าน");
-
-      // บันทึกไฟล์ PDF
-      doc.save(`Member_${this.selectedMember.member_id}.pdf`);
-      
-    },
-
-    // โหลดรูปภาพ
-loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";  // รองรับการดึงภาพจากโดเมนต่าง ๆ
-    img.src = `http://localhost:8080/uploads/${src}`;  // ปรับ URL ตามที่เซิร์ฟเวอร์สามารถเข้าถึงได้
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      
-      // ตรวจสอบชนิดของไฟล์ และแปลงเป็น Base64 ตามประเภทของไฟล์
-      const fileExtension = src.split('.').pop().toLowerCase();
-      let mimeType = "image/jpg";  // Default เป็น JPEG
-
-      if (fileExtension === "png") {
-        mimeType = "image/png";  // หากเป็น PNG ให้ใช้ image/png
-      }
-
-      const base64Image = canvas.toDataURL(mimeType);
-      
-      // พิมพ์ Base64 ในคอนโซลเพื่อการตรวจสอบ
-      console.log(base64Image);
-
-      resolve(base64Image);
-    };
-    img.onerror = reject;
-  });
-}
-
-  },
-
-  created() {
-    this.loadMembers();
-  }
-};
 </script>
 
-
-
-
 <style scoped>
+
 /* สไตล์ทั่วไป */
 .member-container {
   font-family: 'Sarabun', sans-serif;
