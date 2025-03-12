@@ -38,6 +38,7 @@
         <div class="sidebar-menu">
           <router-link to="/" class="sidebar-menu-item"><span class="menu-emoji">🏠</span> หน้าหลัก</router-link>
           <router-link to="/member" class="sidebar-menu-item"><span class="menu-emoji">👨‍👩‍👧‍👦</span> จัดการสมาชิก</router-link>
+          <router-link to="/loan-form" class="sidebar-menu-item"><span class="menu-emoji">💰</span> จัดการสินเชื่อ</router-link>
 
           <!-- เมนูข้อมูลพนักงานแบบเลื่อนลง -->
           <div class="dropdown-menu">

@@ -1,32 +1,43 @@
-<template> 
-<div class="loan"></div>
+<template>
+  <div class="loan">
     <div>
       <h2>เพิ่มข้อมูลสินเชื่อ</h2>
       <form @submit.prevent="handleSubmit">
-        <!-- ข้อมูลผู้กู้ -->
+        <!-- เลือกสมาชิกที่จะกู้ -->
+        <div>
+          <label for="member_id">เลือกสมาชิกที่จะกู้ *</label>
+          <select v-model="loan.member_id" id="member_id" @change="loadMemberData" required>
+            <option value="">-- เลือกสมาชิก --</option>
+            <option v-for="member in members" :key="member.member_id" :value="member.member_id">
+              {{ member.first_name }} {{ member.last_name }} (ID: {{ member.member_id }})
+            </option>
+          </select>
+        </div>
+
+        <!-- ข้อมูลผู้กู้ (แสดงข้อมูลจากสมาชิกที่เลือก) -->
         <div>
           <label for="full_name">ชื่อ-นามสกุล *</label>
-          <input v-model="loan.full_name" type="text" id="full_name" required />
+          <input v-model="loan.full_name" type="text" id="full_name" readonly />
         </div>
-        
+
         <div>
           <label for="phone">เบอร์โทร *</label>
-          <input v-model="loan.phone" type="text" id="phone" required />
+          <input v-model="loan.phone" type="text" id="phone" readonly />
         </div>
     
         <div class="form-group">
-              <label for="bank_name">ชื่อธนาคาร <span class="required">*</span></label>
-              <select id="bank_name" v-model="formData.bank_name" required>
-                <option value="">เลือกธนาคาร</option>
-                <option value="กรุงเทพ">ธนาคารกรุงเทพ</option>
-                <option value="กสิกรไทย">ธนาคารกสิกรไทย</option>
-                <option value="กรุงไทย">ธนาคารกรุงไทย</option>
-                <option value="ไทยพาณิชย์">ธนาคารไทยพาณิชย์</option>
-                <option value="ออมสิน">ธนาคารออมสิน</option>
-                <option value="ธกส">ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร</option>
-                <option value="อื่นๆ">อื่นๆ</option>
-              </select>
-            </div>
+          <label for="bank_name">ชื่อธนาคาร <span class="required">*</span></label>
+          <select id="bank_name" v-model="loan.bank_name" required>
+            <option value="">เลือกธนาคาร</option>
+            <option value="กรุงเทพ">ธนาคารกรุงเทพ</option>
+            <option value="กสิกรไทย">ธนาคารกสิกรไทย</option>
+            <option value="กรุงไทย">ธนาคารกรุงไทย</option>
+            <option value="ไทยพาณิชย์">ธนาคารไทยพาณิชย์</option>
+            <option value="ออมสิน">ธนาคารออมสิน</option>
+            <option value="ธกส">ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
     
         <div>
           <label for="account_number">เลขบัญชี *</label>
@@ -70,57 +81,90 @@
     
         <div>
           <label for="loan_amount">จำนวนเงินต้น *</label>
-          <input v-model="loan.loan_amount" type="number" id="loan_amount" required />
+          <input v-model="loan.loan_amount" type="number" id="loan_amount" @input="calculateMonthlyInterest" required />
         </div>
-    
+
         <div>
-          <label for="monthly_interest">ชำระดอกเบี้ยต่อเดือน *</label>
-          <input v-model="loan.monthly_interest" type="number" id="monthly_interest" required />
+          <label for="monthly_interest">ชำระดอกเบี้ยต่อเดือน (1% ของเงินต้น) *</label>
+          <input v-model="loan.monthly_interest" type="number" id="monthly_interest" readonly />
         </div>
     
-        <!-- อัพโหลดเอกสาร -->
-        <div>
-          <label for="id_card_image">สำเนาบัตรประชาชน ผู้กู้ *</label>
-          <input type="file" id="id_card_image" required />
+        <!-- ข้อมูลและเอกสารผู้กู้ -->
+        <div class="borrower-section">
+          <h4>เอกสารผู้กู้</h4>
+          <div>
+            <label for="id_card_image">สำเนาบัตรประชาชน ผู้กู้ *</label>
+            <input type="file" id="id_card_image" @change="handleIdCardUpload" required />
+          </div>
+
+          <div>
+            <label for="house_registration_image">สำเนาทะเบียนบ้าน ผู้กู้ *</label>
+            <input type="file" id="house_registration_image" @change="handleHouseRegistrationUpload" required />
+          </div>
         </div>
-    
-        <div>
-          <label for="house_registration_image">สำเนาทะเบียนบ้าน ผู้กู้ *</label>
-          <input type="file" id="house_registration_image" required />
-        </div>
-    
+
         <!-- ข้อมูลผู้ค้ำประกัน -->
         <h3>ข้อมูลผู้ค้ำประกัน</h3>
-        
-        <div>
-          <label for="guarantor1_name">ชื่อผู้ค้ำประกัน 1 *</label>
-          <input v-model="guarantors[0].name" type="text" id="guarantor1_name" required />
-        </div>
-    
+
+        <!-- ผู้ค้ำประกันคนที่ 1 -->
+        <div class="guarantor-section">
+          <h4>ผู้ค้ำประกันคนที่ 1</h4>
+          <div>
+            <label for="guarantor1_name">ชื่อผู้ค้ำประกัน 1 *</label>
+            <input v-model="guarantors[0].name" type="text" id="guarantor1_name" required />
+          </div>
+
         <div>
           <label for="guarantor1_id_card">เลขบัตรประชาชน ผู้ค้ำประกัน 1 *</label>
           <input v-model="guarantors[0].id_card" type="text" id="guarantor1_id_card" required />
         </div>
-    
+
         <div>
           <label for="guarantor1_address">ที่อยู่ผู้ค้ำประกัน 1 *</label>
           <input v-model="guarantors[0].address" type="text" id="guarantor1_address" required />
         </div>
-    
+
+        <!-- อัพโหลดเอกสารผู้ค้ำประกันคนที่ 1 -->
         <div>
-          <label for="guarantor2_name">ชื่อผู้ค้ำประกัน 2 *</label>
-          <input v-model="guarantors[1].name" type="text" id="guarantor2_name" required />
+          <label for="guarantor1_id_card_image">สำเนาบัตรประชาชน ผู้ค้ำประกันคนที่ 1 *</label>
+          <input type="file" id="guarantor1_id_card_image" @change="handleGuarantor1IdCardUpload" required />
         </div>
-    
+
+        <div>
+          <label for="guarantor1_house_registration_image">สำเนาทะเบียนบ้าน ผู้ค้ำประกันคนที่ 1 *</label>
+          <input type="file" id="guarantor1_house_registration_image" @change="handleGuarantor1HouseRegistrationUpload" required />
+        </div>
+        </div> <!-- ปิด guarantor-section -->
+
+        <!-- ผู้ค้ำประกันคนที่ 2 -->
+        <div class="guarantor-section">
+          <h4>ผู้ค้ำประกันคนที่ 2</h4>
+          <div>
+            <label for="guarantor2_name">ชื่อผู้ค้ำประกัน 2 *</label>
+            <input v-model="guarantors[1].name" type="text" id="guarantor2_name" required />
+          </div>
+
         <div>
           <label for="guarantor2_id_card">เลขบัตรประชาชน ผู้ค้ำประกัน 2 *</label>
           <input v-model="guarantors[1].id_card" type="text" id="guarantor2_id_card" required />
         </div>
-    
+
         <div>
           <label for="guarantor2_address">ที่อยู่ผู้ค้ำประกัน 2 *</label>
           <input v-model="guarantors[1].address" type="text" id="guarantor2_address" required />
         </div>
+
+        <!-- อัพโหลดเอกสารผู้ค้ำประกันคนที่ 2 -->
+        <div>
+          <label for="guarantor2_id_card_image">สำเนาบัตรประชาชน ผู้ค้ำประกันคนที่ 2 *</label>
+          <input type="file" id="guarantor2_id_card_image" @change="handleGuarantor2IdCardUpload" required />
+        </div>
+
+        <div>
+          <label for="guarantor2_house_registration_image">สำเนาทะเบียนบ้าน ผู้ค้ำประกันคนที่ 2 *</label>
+          <input type="file" id="guarantor2_house_registration_image" @change="handleGuarantor2HouseRegistrationUpload" required />
+        </div>
+        </div> <!-- ปิด guarantor-section -->
     
         <!-- ปุ่มการกระทำ -->
         <div>
@@ -129,102 +173,317 @@
         </div>
       </form>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    data() {
-      return {
-        loan: {
-          loan_id: null, // เพิ่ม loan_id
-          full_name: '',
-          phone: '',
-          banks: [],
-          account_number: '',
-          id_card: '',
-          address: '',
-          subdistrict: '',
-          district: '',
-          province: '',
-          postal_code: '',
-          first_payment_date: '',
-          loan_amount: '',
-          monthly_interest: '',
-          interest_rate: null, // เพิ่ม interest_rate
-          repayment_period: null, // เพิ่ม repayment_period
-          start_date: null, // เพิ่ม start_date
-          end_date: null, // เพิ่ม end_date
-          guarantee_required: 1, // ค่า default guarantee_required
-          created_by: null, // ค่า default created_by
-          updated_by: null, // ค่า default updated_by
-          created_at: new Date().toISOString(), // เพิ่ม created_at
-          updated_at: new Date().toISOString(), // เพิ่ม updated_at
-        },
-        guarantors: [
-          { name: '', id_card: '', address: '' },
-          { name: '', id_card: '', address: '' },
-        ],
-      };
-    },
-    methods: {
-      handleSubmit() {
-        // ตรวจสอบว่าผู้ค้ำประกันเป็นคนเดียวกับผู้กู้หรือไม่
-        if (
-          this.guarantors[0].id_card === this.loan.id_card ||
-          this.guarantors[1].id_card === this.loan.id_card
-        ) {
-          alert('ผู้ค้ำประกันห้ามเป็นผู้กู้');
-          return;
-        }
-    
-        // ส่งข้อมูลสินเชื่อและผู้ค้ำประกันไปยัง backend
-        const loanData = {
-          loan: this.loan,
-          guarantors: this.guarantors,
-        };
-    
-        console.log(loanData);
-        // เพิ่มโค้ดเพื่อส่งข้อมูลไปที่ backend
-      },
-      handleCancel() {
-        // รีเซ็ตฟอร์ม
-        this.loan = {
-          loan_id: null,
-          full_name: '',
-          phone: '',
-          banks: [],
-          account_number: '',
-          id_card: '',
-          address: '',
-          subdistrict: '',
-          district: '',
-          province: '',
-          postal_code: '',
-          first_payment_date: '',
-          loan_amount: '',
-          monthly_interest: '',
-          interest_rate: null,
-          repayment_period: null,
-          start_date: null,
-          end_date: null,
-          guarantee_required: 1,
-          created_by: null,
-          updated_by: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        this.guarantors = [
-          { name: '', id_card: '', address: '' },
-          { name: '', id_card: '', address: '' },
-        ];
-      },
-    },
-  };
-  </script>
+  </div>
+</template>
 
-  <style scoped>
+<script>
+import axios from 'axios';
+import api from '@/services/api';
+
+export default {
+  data() {
+    return {
+      members: [], // เพิ่มตัวแปรเก็บข้อมูลสมาชิกทั้งหมด
+      loan: {
+        loan_id: null,
+        member_id: '', // เพิ่ม member_id สำหรับเลือกสมาชิก
+        full_name: '',
+        phone: '',
+        bank_name: '',
+        account_number: '',
+        id_card: '',
+        address: '',
+        subdistrict: '',
+        district: '',
+        province: '',
+        postal_code: '',
+        first_payment_date: '',
+        loan_amount: '',
+        monthly_interest: '',
+        interest_rate: null,
+        repayment_period: null,
+        start_date: null,
+        end_date: null,
+        guarantee_required: 1,
+        created_by: null,
+        updated_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        id_card_image: null,
+        house_registration_image: null,
+      },
+      guarantors: [
+        {
+          name: '',
+          id_card: '',
+          address: '',
+          id_card_image: null,
+          house_registration_image: null
+        },
+        {
+          name: '',
+          id_card: '',
+          address: '',
+          id_card_image: null,
+          house_registration_image: null
+        },
+      ],
+    };
+    },
+  created() {
+    // ดึงข้อมูลสมาชิกทั้งหมดเมื่อโหลดหน้า
+    this.fetchMembers();
+
+    // ถ้ามีการกรอกจำนวนเงินต้นไว้แล้ว ให้คำนวณดอกเบี้ยอัตโนมัติ
+    if (this.loan.loan_amount) {
+      this.calculateMonthlyInterest();
+    }
+  },
+
+  methods: {
+    // ดึงข้อมูลสมาชิกทั้งหมด
+    async fetchMembers() {
+      try {
+        const response = await api.getMembers();
+        this.members = response.data;
+      } catch (error) {
+        console.error('Error fetching members:', error);
+        alert('ไม่สามารถดึงข้อมูลสมาชิกได้');
+      }
+    },
+
+    // โหลดข้อมูลสมาชิกเมื่อเลือก member_id
+    async loadMemberData() {
+      if (!this.loan.member_id) return;
+
+      try {
+        const response = await api.getMemberById(this.loan.member_id);
+        const member = response.data;
+
+        // นำข้อมูลสมาชิกมาใส่ในฟอร์ม
+        this.loan.full_name = `${member.first_name} ${member.last_name}`;
+        this.loan.phone = member.phone;
+        this.loan.bank_name = member.bank_name || '';
+        this.loan.account_number = member.bank_account || '';
+        this.loan.id_card = member.national_id || '';
+        this.loan.address = member.address_line1 || '';
+        this.loan.subdistrict = member.subdistrict || '';
+        this.loan.district = member.district || '';
+        this.loan.province = member.province || '';
+        this.loan.postal_code = member.postal_code || '';
+
+        // ถ้ามีการกรอกจำนวนเงินต้นไว้แล้ว ให้คำนวณดอกเบี้ยอัตโนมัติ
+        if (this.loan.loan_amount) {
+          this.calculateMonthlyInterest();
+        }
+      } catch (error) {
+        console.error('Error loading member data:', error);
+        alert('ไม่สามารถโหลดข้อมูลสมาชิกได้');
+      }
+    },
+
+    // อัพโหลดเอกสารผู้กู้
+    handleIdCardUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.loan.id_card_image = file;
+      }
+    },
+
+    handleHouseRegistrationUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.loan.house_registration_image = file;
+      }
+    },
+
+    // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 1
+    handleGuarantor1IdCardUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.guarantors[0].id_card_image = file;
+      }
+    },
+
+    handleGuarantor1HouseRegistrationUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.guarantors[0].house_registration_image = file;
+      }
+    },
+
+    // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 2
+    handleGuarantor2IdCardUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.guarantors[1].id_card_image = file;
+      }
+    },
+
+    handleGuarantor2HouseRegistrationUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.guarantors[1].house_registration_image = file;
+      }
+    },
+
+    // คำนวณดอกเบี้ยต่อเดือนอัตโนมัติ (1% ของเงินต้น)
+    calculateMonthlyInterest() {
+      if (this.loan.loan_amount && !isNaN(this.loan.loan_amount)) {
+        // คำนวณดอกเบี้ย 1% ของเงินต้น
+        this.loan.monthly_interest = parseFloat(this.loan.loan_amount) * 0.01;
+
+        // ปัดเศษให้เป็นจำนวนเต็ม (ถ้าต้องการ)
+        this.loan.monthly_interest = Math.round(this.loan.monthly_interest);
+      } else {
+        this.loan.monthly_interest = '';
+      }
+    },
+
+    handleSubmit() {
+      // ตรวจสอบว่าได้เลือกสมาชิกหรือไม่
+      if (!this.loan.member_id) {
+        alert('กรุณาเลือกสมาชิกที่จะกู้');
+        return;
+      }
+
+      // ตรวจสอบว่าผู้ค้ำประกันเป็นคนเดียวกับผู้กู้หรือไม่
+      if (
+        this.guarantors[0].id_card === this.loan.id_card ||
+        this.guarantors[1].id_card === this.loan.id_card
+      ) {
+        alert('ผู้ค้ำประกันห้ามเป็นผู้กู้');
+        return;
+      }
+
+      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้กู้หรือไม่
+      if (!this.loan.id_card_image || !this.loan.house_registration_image) {
+        alert('กรุณาอัพโหลดเอกสารของผู้กู้ให้ครบถ้วน');
+        return;
+      }
+
+      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 1 หรือไม่
+      if (!this.guarantors[0].id_card_image || !this.guarantors[0].house_registration_image) {
+        alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 1 ให้ครบถ้วน');
+        return;
+      }
+
+      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 2 หรือไม่
+      if (!this.guarantors[1].id_card_image || !this.guarantors[1].house_registration_image) {
+        alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 2 ให้ครบถ้วน');
+        return;
+      }
+
+      // ส่งข้อมูลสินเชื่อและผู้ค้ำประกันไปยัง backend
+      const formData = new FormData();
+
+      // เพิ่มข้อมูลสินเชื่อ
+      Object.keys(this.loan).forEach(key => {
+        if (key !== 'id_card_image' && key !== 'house_registration_image') {
+          formData.append(`loan[${key}]`, this.loan[key]);
+        }
+      });
+
+      // เพิ่มไฟล์ของผู้กู้
+      formData.append('borrower_id_card_image', this.loan.id_card_image);
+      formData.append('borrower_house_registration_image', this.loan.house_registration_image);
+
+      // เพิ่มข้อมูลผู้ค้ำประกัน
+      this.guarantors.forEach((guarantor, index) => {
+        Object.keys(guarantor).forEach(key => {
+          if (key !== 'id_card_image' && key !== 'house_registration_image') {
+            formData.append(`guarantors[${index}][${key}]`, guarantor[key]);
+          }
+        });
+
+        // เพิ่มไฟล์ของผู้ค้ำประกัน
+        formData.append(`guarantor${index+1}_id_card_image`, guarantor.id_card_image);
+        formData.append(`guarantor${index+1}_house_registration_image`, guarantor.house_registration_image);
+      });
+
+      console.log('Form data prepared for submission:', this.loan, this.guarantors);
+
+      // ส่งข้อมูลไปยัง backend
+      axios.post('/api/loans', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+        .then(response => {
+          alert('บันทึกข้อมูลสำเร็จ');
+          this.handleCancel(); // รีเซ็ตฟอร์มหลังจากบันทึกสำเร็จ
+        })
+        .catch(error => {
+          console.error('Error submitting form:', error);
+          alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        });
+    },
+    handleCancel() {
+      // รีเซ็ตฟอร์ม
+      this.loan = {
+        loan_id: null,
+        member_id: '', // รีเซ็ต member_id
+        full_name: '',
+        phone: '',
+        bank_name: '',
+        account_number: '',
+        id_card: '',
+        address: '',
+        subdistrict: '',
+        district: '',
+        province: '',
+        postal_code: '',
+        first_payment_date: '',
+        loan_amount: '',
+        monthly_interest: '',
+        interest_rate: null,
+        repayment_period: null,
+        start_date: null,
+        end_date: null,
+        guarantee_required: 1,
+        created_by: null,
+        updated_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        id_card_image: null,
+        house_registration_image: null,
+      };
+
+      // Reset file input elements ของผู้กู้
+      document.getElementById('id_card_image').value = '';
+      document.getElementById('house_registration_image').value = '';
+
+      // Reset file input elements ของผู้ค้ำประกัน
+      document.getElementById('guarantor1_id_card_image').value = '';
+      document.getElementById('guarantor1_house_registration_image').value = '';
+      document.getElementById('guarantor2_id_card_image').value = '';
+      document.getElementById('guarantor2_house_registration_image').value = '';
+
+      // รีเซ็ตข้อมูลผู้ค้ำประกัน
+      this.guarantors = [
+        {
+          name: '',
+          id_card: '',
+          address: '',
+          id_card_image: null,
+          house_registration_image: null
+        },
+        {
+          name: '',
+          id_card: '',
+          address: '',
+          id_card_image: null,
+          house_registration_image: null
+        },
+      ];
+    }
+  }
+};
+</script>
+
+<style scoped>
   /* General styles */
-body {
+.loan {
   font-family: 'Arial', sans-serif;
   background-color: #f4f7fa;
   margin: 0;
@@ -307,11 +566,44 @@ button[type="button"]:hover {
 }
 
 /* Styling for sections */
-h3 {
+h3, h4 {
   margin-top: 40px;
   margin-bottom: 20px;
   color: #333;
+}
+
+h3 {
   font-size: 22px;
+}
+
+h4 {
+  font-size: 18px;
+  background-color: #f5f5f5;
+  padding: 10px;
+  border-radius: 5px;
+  border-left: 4px solid #4CAF50;
+}
+
+/* Styling for borrower and guarantor sections */
+.borrower-section, .guarantor-section {
+  margin-top: 30px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.borrower-section h4 {
+  margin-top: 0;
+  background-color: #e3f2fd;
+  border-left: 4px solid #4CAF50;
+}
+
+.guarantor-section h4 {
+  margin-top: 0;
+  background-color: #e8f5e9;
+  border-left: 4px solid #2196F3;
 }
 
 /* Form group with select input */

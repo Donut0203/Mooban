@@ -77,6 +77,12 @@ const routes = [
     name: 'member',
     component: () => import('../views/Member.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/loan-form',
+    name: 'loanForm',
+    component: () => import('../views/LoanForm.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
