@@ -212,6 +212,61 @@ const api = {
         'Content-Type': 'multipart/form-data'
       }
     });
+  },
+
+  // Loan management endpoints
+  getLoans() {
+    return apiClient.get('/loans');
+  },
+  getLoanById(loanId) {
+    return apiClient.get(`/loans/${loanId}`);
+  },
+  createLoan(loanData) {
+    return apiClient.post('/loans', loanData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  updateLoan(loanId, loanData) {
+    return apiClient.put(`/loans/${loanId}`, loanData);
+  },
+  deleteLoan(loanId) {
+    return apiClient.delete(`/loans/${loanId}`);
+  },
+
+  // Guarantor management endpoints
+  getGuarantorsByLoanId(loanId) {
+    return apiClient.get(`/guarantors/loan/${loanId}`);
+  },
+  createGuarantor(guarantorData) {
+    return apiClient.post('/guarantors', guarantorData);
+  },
+  updateGuarantor(guarantorId, guarantorData) {
+    return apiClient.put(`/guarantors/${guarantorId}`, guarantorData);
+  },
+  deleteGuarantor(guarantorId) {
+    return apiClient.delete(`/guarantors/${guarantorId}`);
+  },
+
+  // Transaction management endpoints
+  getAllTransactions() {
+    return apiClient.get('/transactions');
+  },
+  getMemberTransactions(memberId) {
+    return apiClient.get(`/transactions/member/${memberId}`);
+  },
+  getMemberBalance(memberId) {
+    return apiClient.get(`/transactions/balance/${memberId}`);
+  },
+  depositMoney(data) {
+    return apiClient.post('/transactions/deposit', data);
+  },
+  withdrawMoney(data) {
+    return apiClient.post('/transactions/withdraw', data);
+  },
+  repayLoan(data) {
+    return apiClient.post('/transactions/loan-repayment', data);
   }
 };
 

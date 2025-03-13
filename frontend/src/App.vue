@@ -38,7 +38,30 @@
         <div class="sidebar-menu">
           <router-link to="/" class="sidebar-menu-item"><span class="menu-emoji">🏠</span> หน้าหลัก</router-link>
           <router-link to="/member" class="sidebar-menu-item"><span class="menu-emoji">👨‍👩‍👧‍👦</span> จัดการสมาชิก</router-link>
-          <router-link to="/loan-form" class="sidebar-menu-item"><span class="menu-emoji">💰</span> จัดการสินเชื่อ</router-link>
+
+          <!-- เมนูสินเชื่อแบบเลื่อนลง -->
+          <div class="dropdown-menu">
+            <div class="dropdown-header" @click="toggleLoanMenu">
+              <span><span class="menu-emoji">💰</span> จัดการสินเชื่อ</span>
+              <i class="dropdown-icon" :class="{'dropdown-icon-open': showLoanMenu}">▼</i>
+            </div>
+            <div class="dropdown-content" v-show="showLoanMenu">
+              <router-link to="/loans" class="sidebar-menu-item submenu-item"><span class="menu-emoji">📋</span> รายการสินเชื่อ</router-link>
+              <router-link to="/loan-form" class="sidebar-menu-item submenu-item"><span class="menu-emoji">➕</span> เพิ่มสินเชื่อใหม่</router-link>
+            </div>
+          </div>
+
+          <!-- เมนูธุรกรรมการเงินแบบเลื่อนลง -->
+          <div class="dropdown-menu">
+            <div class="dropdown-header" @click="toggleTransactionMenu">
+              <span><span class="menu-emoji">💸</span> ธุรกรรมการเงิน</span>
+              <i class="dropdown-icon" :class="{'dropdown-icon-open': showTransactionMenu}">▼</i>
+            </div>
+            <div class="dropdown-content" v-show="showTransactionMenu">
+              <router-link to="/transactions" class="sidebar-menu-item submenu-item"><span class="menu-emoji">💱</span> ฝาก-ถอน-ชำระเงินกู้</router-link>
+              <router-link to="/transaction-history" class="sidebar-menu-item submenu-item"><span class="menu-emoji">📊</span> ประวัติธุรกรรม</router-link>
+            </div>
+          </div>
 
           <!-- เมนูข้อมูลพนักงานแบบเลื่อนลง -->
           <div class="dropdown-menu">
@@ -127,6 +150,8 @@ export default {
       pendingUsers: [],
       showNotifications: false,
       showEmployeeMenu: false, // เพิ่มตัวแปรสำหรับควบคุมการแสดงเมนูย่อย
+      showLoanMenu: false, // เพิ่มตัวแปรสำหรับควบคุมการแสดงเมนูสินเชื่อ
+      showTransactionMenu: false, // เพิ่มตัวแปรสำหรับควบคุมการแสดงเมนูธุรกรรมการเงิน
       showUserDetails: false, // เพิ่มตัวแปรสำหรับควบคุมการแสดง/ซ่อนข้อมูลส่วนตัว
       loading: false,
       userId: storedUserId,
@@ -175,6 +200,12 @@ export default {
     },
     toggleEmployeeMenu() {
       this.showEmployeeMenu = !this.showEmployeeMenu;
+    },
+    toggleLoanMenu() {
+      this.showLoanMenu = !this.showLoanMenu;
+    },
+    toggleTransactionMenu() {
+      this.showTransactionMenu = !this.showTransactionMenu;
     },
     toggleUserDetails() {
       this.showUserDetails = !this.showUserDetails;

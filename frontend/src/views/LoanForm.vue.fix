@@ -1,0 +1,42 @@
+// แก้ไขส่วนการส่งข้อมูลไปยัง backend ในไฟล์ LoanForm.vue
+
+// ส่งข้อมูลไปยัง backend โดยใช้ api service
+try {
+  console.log('Submitting loan data...');
+  
+  // แสดง loading message
+  const loadingMessage = 'กำลังบันทึกข้อมูล กรุณารอสักครู่...';
+  alert(loadingMessage);
+  
+  // ใช้ api service แทน axios โดยตรง
+  api.createLoan(formData)
+    .then(response => {
+      console.log('Loan created successfully:', response.data);
+      
+      // ไม่ต้องสร้างธุรกรรมการรับเงินกู้ซ้ำ เพราะได้สร้างในฝั่ง backend แล้ว
+      alert('บันทึกข้อมูลสำเร็จ');
+      
+      // รีเซ็ตฟอร์มหลังจากบันทึกสำเร็จ
+      this.handleCancel();
+      
+      // นำทางไปยังหน้ารายการสินเชื่อ
+      this.$router.push('/loans');
+    })
+    .catch(error => {
+      console.error('Error creating loan:', error);
+      let errorMessage = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+      
+      // แสดงข้อความผิดพลาดที่เฉพาะเจาะจงมากขึ้น
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      }
+      
+      alert(errorMessage);
+    });
+} catch (error) {
+  console.error('Exception during form submission:', error);
+  alert('เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง');
+}

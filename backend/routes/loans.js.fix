@@ -1,0 +1,390 @@
+const express = require('express');
+const router = express.Router();
+const verifyToken = require('../middleware/auth');
+const db = require('../config/database');
+const fs = require('fs');
+const path = require('path');
+
+// Get all loans with member information
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const [loans] = await db.query(`
+      SELECT l.*, m.first_name as member_first_name, m.last_name as member_last_name
+      FROM loanagreement l
+      JOIN member m ON l.member_id = m.member_id
+      ORDER BY l.loan_id DESC
+    `);
+    
+    res.json(loans);
+  } catch (error) {
+    console.error('Error fetching loans:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get loan by ID with member information
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    const [loans] = await db.query(`
+      SELECT l.*, m.first_name as member_first_name, m.last_name as member_last_name
+      FROM loanagreement l
+      JOIN member m ON l.member_id = m.member_id
+      WHERE l.loan_id = ?
+    `, [req.params.id]);
+    
+    if (loans.length === 0) {
+      return res.status(404).json({ message: 'Loan not found' });
+    }
+    
+    const loan = loans[0];
+    loan.borrower_name = `${loan.member_first_name} ${loan.member_last_name}`.trim();
+    
+    res.json(loan);
+  } catch (error) {
+    console.error('Error fetching loan:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create new loan
+router.post('/', verifyToken, async (req, res) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    console.log('Received loan data:', req.body);
+    console.log('Received files:', req.files);
+    
+    // รับข้อมูลจาก FormData
+    const member_id = req.body.member_id;
+    const full_name = req.body.full_name;
+    const phone = req.body.phone;
+    const bank_name = req.body.bank_name;
+    const account_number = req.body.account_number;
+    const id_card = req.body.id_card;
+    const address = req.body.address;
+    const subdistrict = req.body.subdistrict;
+    const district = req.body.district;
+    const province = req.body.province;
+    const postal_code = req.body.postal_code;
+    const first_payment_date = req.body.first_payment_date;
+    const loan_amount = req.body.loan_amount;
+    const monthly_interest = req.body.monthly_interest;
+    const interest_rate = req.body.interest_rate || 1; // ค่าเริ่มต้น 1%
+    const repayment_period = req.body.repayment_period || 12; // ค่าเริ่มต้น 12 เดือน
+    const start_date = req.body.start_date || new Date().toISOString().split('T')[0]; // วันที่ปัจจุบัน
+    const end_date = req.body.end_date || new Date().toISOString().split('T')[0]; // วันที่ปัจจุบัน
+    const guarantee_required = req.body.guarantee_required || 1;
+    
+    // แปลง guarantors จาก JSON string เป็น object
+    let guarantors = [];
+    try {
+      if (req.body.guarantors) {
+        guarantors = JSON.parse(req.body.guarantors);
+      }
+    } catch (error) {
+      console.error('Error parsing guarantors JSON:', error);
+    }
+
+    // Validate required fields
+    if (!member_id || !loan_amount) {
+      console.error('Missing required fields:', { member_id, loan_amount });
+      return res.status(400).json({ message: 'รหัสสมาชิกและจำนวนเงินกู้เป็นข้อมูลที่จำเป็น' });
+    }
+
+    // Insert loan data
+    const [loanResult] = await connection.query(
+      `INSERT INTO loanagreement (
+        member_id, full_name, phone, bank_name, account_number, id_card,
+        address, subdistrict, district, province, postal_code, first_payment_date,
+        loan_amount, monthly_interest, interest_rate, repayment_period, 
+        start_date, end_date, guarantee_required, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        member_id, full_name, phone, bank_name, account_number, id_card,
+        address, subdistrict, district, province, postal_code, first_payment_date,
+        loan_amount, monthly_interest, interest_rate, repayment_period, 
+        start_date, end_date, guarantee_required || 1, req.userId, req.userId
+      ]
+    );
+
+    const loanId = loanResult.insertId;
+
+    // Insert guarantors if provided
+    if (guarantors && Array.isArray(guarantors) && guarantors.length > 0) {
+      for (const guarantor of guarantors) {
+        await connection.query(
+          `INSERT INTO guarantor (
+            loan_id, member_id, guarantor_name, guarantor_id_card, guarantor_address,
+            created_by, updated_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            loanId,
+            guarantor.member_id || null,
+            guarantor.name,
+            guarantor.id_card,
+            guarantor.address,
+            req.userId,
+            req.userId
+          ]
+        );
+      }
+    }
+
+    // Process file uploads if any
+    if (req.files && req.files.length > 0) {
+      console.log('Processing file uploads...');
+      
+      const uploadsDir = path.join(__dirname, '..', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // บันทึกข้อมูลไฟล์ลงในตาราง loan_documents
+      for (const file of req.files) {
+        const fieldname = file.fieldname;
+        const filename = file.filename;
+        const filepath = `/uploads/${filename}`;
+        
+        let documentType = '';
+        
+        if (fieldname === 'borrower_id_card_image') {
+          documentType = 'borrower_id_card';
+        } else if (fieldname === 'borrower_house_registration_image') {
+          documentType = 'borrower_house_registration';
+        } else if (fieldname === 'guarantor1_id_card_image') {
+          documentType = 'guarantor1_id_card';
+        } else if (fieldname === 'guarantor1_house_registration_image') {
+          documentType = 'guarantor1_house_registration';
+        } else if (fieldname === 'guarantor2_id_card_image') {
+          documentType = 'guarantor2_id_card';
+        } else if (fieldname === 'guarantor2_house_registration_image') {
+          documentType = 'guarantor2_house_registration';
+        }
+        
+        if (documentType) {
+          await connection.query(
+            `INSERT INTO loan_documents (loan_id, document_type, file_path)
+             VALUES (?, ?, ?)`,
+            [loanId, documentType, filepath]
+          );
+        }
+      }
+    }
+    
+    // อัปเดตยอดเงินกู้ในตาราง deposit_balance
+    const [balanceResult] = await connection.query(
+      `SELECT * FROM deposit_balance WHERE member_id = ?`,
+      [member_id]
+    );
+    
+    if (balanceResult.length > 0) {
+      // อัปเดตยอดเงินกู้
+      await connection.query(
+        `UPDATE deposit_balance 
+         SET loan_balance = loan_balance + ? 
+         WHERE member_id = ?`,
+        [loan_amount, member_id]
+      );
+    } else {
+      // สร้างรายการใหม่
+      await connection.query(
+        `INSERT INTO deposit_balance (member_id, deposit_balance, loan_balance) 
+         VALUES (?, 0, ?)`,
+        [member_id, loan_amount]
+      );
+    }
+    
+    // สร้างรายการธุรกรรมการรับเงินกู้
+    await connection.query(
+      `INSERT INTO transactions (
+        member_id, transaction_status, amount, created_by, updated_by
+      ) VALUES (?, 'loan_disbursement', ?, ?, ?)`,
+      [member_id, loan_amount, req.userId, req.userId]
+    );
+
+    await connection.commit();
+
+    // Return success response
+    res.status(201).json({ 
+      message: 'Loan created successfully', 
+      loan_id: loanId 
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error creating loan:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  } finally {
+    connection.release();
+  }
+});
+
+// Update loan
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const {
+      member_id,
+      full_name,
+      phone,
+      bank_name,
+      account_number,
+      id_card,
+      address,
+      subdistrict,
+      district,
+      province,
+      postal_code,
+      first_payment_date,
+      loan_amount,
+      monthly_interest,
+      interest_rate,
+      repayment_period,
+      start_date,
+      end_date,
+      guarantee_required
+    } = req.body;
+
+    // Validate required fields
+    if (!member_id || !loan_amount) {
+      return res.status(400).json({ message: 'รหัสสมาชิกและจำนวนเงินกู้เป็นข้อมูลที่จำเป็น' });
+    }
+
+    // Check if loan exists
+    const [existingLoans] = await db.query(
+      'SELECT * FROM loanagreement WHERE loan_id = ?',
+      [req.params.id]
+    );
+
+    if (existingLoans.length === 0) {
+      return res.status(404).json({ message: 'Loan not found' });
+    }
+
+    // Update loan data
+    await db.query(
+      `UPDATE loanagreement SET 
+        member_id = ?, 
+        full_name = ?,
+        phone = ?,
+        bank_name = ?,
+        account_number = ?,
+        id_card = ?,
+        address = ?,
+        subdistrict = ?,
+        district = ?,
+        province = ?,
+        postal_code = ?,
+        first_payment_date = ?,
+        loan_amount = ?, 
+        monthly_interest = ?,
+        interest_rate = ?, 
+        repayment_period = ?, 
+        start_date = ?, 
+        end_date = ?, 
+        guarantee_required = ?,
+        updated_by = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE loan_id = ?`,
+      [
+        member_id, 
+        full_name,
+        phone,
+        bank_name,
+        account_number,
+        id_card,
+        address,
+        subdistrict,
+        district,
+        province,
+        postal_code,
+        first_payment_date,
+        loan_amount, 
+        monthly_interest,
+        interest_rate, 
+        repayment_period, 
+        start_date, 
+        end_date, 
+        guarantee_required || 1,
+        req.userId,
+        req.params.id
+      ]
+    );
+
+    res.json({ message: 'Loan updated successfully' });
+  } catch (error) {
+    console.error('Error updating loan:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete loan
+router.delete('/:id', verifyToken, async (req, res) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    // Check if loan exists
+    const [existingLoans] = await connection.query(
+      'SELECT * FROM loanagreement WHERE loan_id = ?',
+      [req.params.id]
+    );
+
+    if (existingLoans.length === 0) {
+      return res.status(404).json({ message: 'Loan not found' });
+    }
+    
+    const loan = existingLoans[0];
+    
+    // ลบไฟล์เอกสารที่เกี่ยวข้อง
+    const [documents] = await connection.query(
+      'SELECT * FROM loan_documents WHERE loan_id = ?',
+      [req.params.id]
+    );
+    
+    for (const doc of documents) {
+      const filePath = path.join(__dirname, '..', doc.file_path);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    // ลบข้อมูลเอกสารในฐานข้อมูล
+    await connection.query(
+      'DELETE FROM loan_documents WHERE loan_id = ?',
+      [req.params.id]
+    );
+    
+    // ลบข้อมูลผู้ค้ำประกัน
+    await connection.query(
+      'DELETE FROM guarantor WHERE loan_id = ?',
+      [req.params.id]
+    );
+    
+    // อัปเดตยอดเงินกู้ในตาราง deposit_balance
+    await connection.query(
+      `UPDATE deposit_balance 
+       SET loan_balance = loan_balance - ? 
+       WHERE member_id = ?`,
+      [loan.loan_amount, loan.member_id]
+    );
+
+    // ลบข้อมูลสินเชื่อ
+    await connection.query(
+      'DELETE FROM loanagreement WHERE loan_id = ?',
+      [req.params.id]
+    );
+    
+    await connection.commit();
+
+    res.json({ message: 'Loan deleted successfully' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error deleting loan:', error);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    connection.release();
+  }
+});
+
+module.exports = router;

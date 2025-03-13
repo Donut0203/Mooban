@@ -104,8 +104,21 @@
             </div>
             
             <div class="form-group" v-if="isEditing">
-              <label for="balance">ยอดคงเหลือ</label>
-              <input type="number" id="balance" v-model="formData.balance" step="0.01">
+              <label for="deposit_balance">ยอดเงินฝาก</label>
+              <input type="number" id="deposit_balance" v-model="formData.deposit_balance" step="0.01" readonly>
+              <div class="form-hint">ยอดเงินฝากจะถูกปรับปรุงอัตโนมัติผ่านระบบธุรกรรมการเงิน</div>
+            </div>
+
+            <div class="form-group" v-if="isEditing">
+              <label for="loan_balance">ยอดเงินกู้คงเหลือ</label>
+              <input type="number" id="loan_balance" v-model="formData.loan_balance" step="0.01" readonly>
+              <div class="form-hint">ยอดเงินกู้จะถูกปรับปรุงอัตโนมัติผ่านระบบธุรกรรมการเงิน</div>
+            </div>
+
+            <div class="form-actions" v-if="isEditing">
+              <router-link :to="'/transactions?member_id=' + formData.member_id" class="btn-transaction">
+                ไปที่หน้าธุรกรรมการเงิน
+              </router-link>
             </div>
             
             <div class="form-actions">
@@ -133,7 +146,8 @@
             <th>เลขบัญชี</th>
             <th>เลขบัตรประชาชน</th>
             <th>ที่อยู่</th>
-            <th>ยอดคงเหลือ</th>
+            <th>ยอดเงินฝาก</th>
+            <th>ยอดเงินกู้คงเหลือ</th>
             <th>การจัดการ</th>
           </tr>
         </thead>
@@ -147,7 +161,8 @@
             <td>{{ member.bank_account }}</td>
             <td>{{ member.national_id }}</td>
             <td>{{ formatAddress(member) }}</td>
-            <td>{{ formatCurrency(member.balance) }}</td>
+            <td class="deposit-balance">{{ formatCurrency(member.deposit_balance || 0) }}</td>
+            <td class="loan-balance">{{ formatCurrency(member.loan_balance || 0) }}</td>
             <td class="actions">
               <button class="btn-view" @click="viewMember(member)">ดู</button>
               <button class="btn-edit" @click="editMember(member)">แก้ไข</button>
@@ -202,8 +217,38 @@
             <div class="detail-value">{{ formatAddress(selectedMember) }}</div>
           </div>
           <div class="detail-row">
-            <div class="detail-label">ยอดคงเหลือ:</div>
-            <div class="detail-value">{{ formatCurrency(selectedMember.balance) }}</div>
+            <div class="detail-label">ยอดเงินฝาก:</div>
+            <div class="detail-value deposit-balance">{{ formatCurrency(selectedMember.deposit_balance || 0) }}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">ยอดเงินกู้คงเหลือ:</div>
+            <div class="detail-value loan-balance">{{ formatCurrency(selectedMember.loan_balance || 0) }}</div>
+          </div>
+
+          <!-- ประวัติธุรกรรมล่าสุด -->
+          <div class="detail-section" v-if="selectedMember.transactions && selectedMember.transactions.length > 0">
+            <h3>ประวัติธุรกรรมล่าสุด</h3>
+            <table class="transaction-table">
+              <thead>
+                <tr>
+                  <th>วันที่</th>
+                  <th>ประเภท</th>
+                  <th>จำนวนเงิน</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="transaction in selectedMember.transactions.slice(0, 5)" :key="transaction.transaction_id">
+                  <td>{{ formatDate(transaction.transaction_date) }}</td>
+                  <td>{{ formatTransactionType(transaction.transaction_status) }}</td>
+                  <td :class="getAmountClass(transaction.transaction_status)">
+                    {{ formatCurrency(transaction.amount) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="view-all-link">
+              <router-link :to="'/transactions?member_id=' + selectedMember.member_id">ดูประวัติธุรกรรมทั้งหมด</router-link>
+            </div>
           </div>
           <div class="detail-row">
             <div class="detail-label">สำเนาบัตรประชาชน:</div>
@@ -313,8 +358,22 @@ export default {
     // โหลดข้อมูลสมาชิกทั้งหมด
     async loadMembers() {
       try {
+        // ดึงข้อมูลสมาชิกทั้งหมด
         const response = await api.getMembers();
         this.members = response.data;
+
+        // ดึงข้อมูลยอดเงินของสมาชิกแต่ละคน
+        for (const member of this.members) {
+          try {
+            const balanceResponse = await api.getMemberBalance(member.member_id);
+            member.deposit_balance = balanceResponse.data.deposit_balance || 0;
+            member.loan_balance = balanceResponse.data.loan_balance || 0;
+          } catch (balanceError) {
+            console.error(`Error fetching balance for member ${member.member_id}:`, balanceError);
+            member.deposit_balance = 0;
+            member.loan_balance = 0;
+          }
+        }
       } catch (error) {
         console.error('Error loading members:', error);
         alert('ไม่สามารถโหลดข้อมูลสมาชิกได้');
@@ -454,7 +513,7 @@ export default {
     },
 
     // ดูรายละเอียดสมาชิก
-    viewMember(member) {
+    async viewMember(member) {
       // สร้างสำเนาข้อมูลสมาชิก
       this.selectedMember = { ...member };
 
@@ -473,13 +532,33 @@ export default {
           this.selectedMember.house_registration_copy = houseRegFromStorage;
           console.log('Loaded house registration from localStorage');
         }
+
+        // ดึงข้อมูลยอดเงินล่าสุด
+        try {
+          const balanceResponse = await api.getMemberBalance(member.member_id);
+          this.selectedMember.deposit_balance = balanceResponse.data.deposit_balance || 0;
+          this.selectedMember.loan_balance = balanceResponse.data.loan_balance || 0;
+        } catch (error) {
+          console.error(`Error fetching balance for member ${member.member_id}:`, error);
+          this.selectedMember.deposit_balance = member.deposit_balance || 0;
+          this.selectedMember.loan_balance = member.loan_balance || 0;
+        }
+
+        // ดึงประวัติธุรกรรมล่าสุด
+        try {
+          const transactionsResponse = await api.getMemberTransactions(member.member_id);
+          this.selectedMember.transactions = transactionsResponse.data || [];
+        } catch (error) {
+          console.error(`Error fetching transactions for member ${member.member_id}:`, error);
+          this.selectedMember.transactions = [];
+        }
       }
 
       this.showViewModal = true;
     },
 
     // แก้ไขข้อมูลสมาชิก
-    editMember(member) {
+    async editMember(member) {
       this.isEditing = true;
 
       // สร้างสำเนาข้อมูลสมาชิก
@@ -499,6 +578,17 @@ export default {
         if (houseRegFromStorage) {
           this.formData.house_registration_copy = houseRegFromStorage;
           console.log('Loaded house registration from localStorage for editing');
+        }
+
+        // ดึงข้อมูลยอดเงินล่าสุด
+        try {
+          const balanceResponse = await api.getMemberBalance(member.member_id);
+          this.formData.deposit_balance = balanceResponse.data.deposit_balance || 0;
+          this.formData.loan_balance = balanceResponse.data.loan_balance || 0;
+        } catch (error) {
+          console.error(`Error fetching balance for member ${member.member_id}:`, error);
+          this.formData.deposit_balance = member.deposit_balance || 0;
+          this.formData.loan_balance = member.loan_balance || 0;
         }
       }
 
@@ -768,6 +858,34 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       });
+    },
+
+    formatTransactionType(type) {
+      switch (type) {
+        case 'deposit':
+          return 'ฝากเงิน';
+        case 'withdraw':
+          return 'ถอนเงิน';
+        case 'loan_repayment':
+          return 'ชำระเงินกู้';
+        case 'loan_disbursement':
+          return 'รับเงินกู้';
+        default:
+          return type;
+      }
+    },
+
+    getAmountClass(type) {
+      switch (type) {
+        case 'deposit':
+        case 'loan_disbursement':
+          return 'amount-positive';
+        case 'withdraw':
+        case 'loan_repayment':
+          return 'amount-negative';
+        default:
+          return '';
+      }
     }
   }
 };
@@ -866,6 +984,23 @@ button {
 
 .btn-submit:hover {
   background-color: #45a049;
+}
+
+.btn-transaction {
+  display: inline-block;
+  background-color: #2196F3;
+  color: white;
+  padding: 8px 15px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.btn-transaction:hover {
+  background-color: #0b7dda;
+  text-decoration: none;
+  color: white;
 }
 
 /* สไตล์ตาราง */
@@ -1030,6 +1165,13 @@ textarea {
   resize: vertical;
 }
 
+.form-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  font-style: italic;
+}
+
 .preview {
   margin-top: 10px;
 }
@@ -1076,6 +1218,72 @@ textarea {
   border: 1px solid #ddd;
   border-radius: 4px;
   margin-top: 5px;
+}
+
+/* สไตล์สำหรับประวัติธุรกรรม */
+.detail-section {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.detail-section h3 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 18px;
+}
+
+.transaction-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
+
+.transaction-table th, .transaction-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.transaction-table th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+  color: #333;
+}
+
+.amount-positive {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.amount-negative {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.deposit-balance {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.loan-balance {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.view-all-link {
+  text-align: right;
+  margin-top: 10px;
+}
+
+.view-all-link a {
+  color: #2196F3;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.view-all-link a:hover {
+  text-decoration: underline;
 }
 
 /* Responsive */

@@ -83,6 +83,31 @@ const routes = [
     name: 'loanForm',
     component: () => import('../views/LoanForm.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/loan-form/:id',
+    name: 'editLoanForm',
+    component: () => import('../views/LoanForm.vue'),
+    meta: { requiresAuth: true },
+    props: true
+  },
+  {
+    path: '/loans',
+    name: 'loanList',
+    component: () => import('../views/LoanList.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/transactions',
+    name: 'transactionForm',
+    component: () => import('../views/TransactionForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/transaction-history',
+    name: 'transactionHistory',
+    component: () => import('../views/TransactionHistory.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

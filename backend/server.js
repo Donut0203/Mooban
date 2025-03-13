@@ -3,12 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+const bodyParser = require('body-parser');
 
 // ใช้ฐานข้อมูล MySQL ที่ตั้งไว้
 const db = require('./config/database');
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
 const uploadRoutes = require('./routes/upload');
+const loanRoutes = require('./routes/loans');
+const guarantorRoutes = require('./routes/guarantors');
+const transactionRoutes = require('./routes/transactions');
 
 const app = express();
 
@@ -21,6 +26,39 @@ app.use(cors({
 // เพิ่มขนาดไฟล์สูงสุดเป็น 50MB
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ตั้งค่า multer สำหรับการอัปโหลดไฟล์
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
+
+// ใช้ multer เป็น middleware สำหรับการอัปโหลดไฟล์
+app.use((req, res, next) => {
+  if (req.path.includes('/api/loans') && req.method === 'POST') {
+    // ใช้ upload.any() สำหรับการอัปโหลดไฟล์หลายไฟล์
+    upload.any()(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        return res.status(400).json({ message: 'File upload error', error: err.message });
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
 
 // สร้างโฟลเดอร์ uploads หากยังไม่มี
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -62,6 +100,9 @@ app.use('/uploads', express.static(uploadsDir, {
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/loans', loanRoutes);
+app.use('/api/guarantors', guarantorRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // API info route
 app.get('/api', (req, res) => {
