@@ -90,9 +90,9 @@
         </div>
 
         <div>
-          <label for="interest_rate">อัตราดอกเบี้ย (%)</label>
-          <input v-model="loan.interest_rate" type="number" id="interest_rate" value="1" readonly />
-          <div class="hint">อัตราดอกเบี้ยคงที่ 1% ต่อเดือน</div>
+          <label for="total_amount">ยอดเงินรวม (เงินต้น+ดอกเบี้ย)</label>
+          <input v-model="loan.total_amount" type="number" id="total_amount" readonly />
+          <div class="hint">ยอดเงินรวมทั้งหมดที่ต้องชำระ (เงินต้น + ดอกเบี้ย 1% ต่อเดือน x 12 เดือน)</div>
         </div>
 
         <div>
@@ -234,6 +234,7 @@ export default {
         first_payment_date: '',
         loan_balance: '',
         monthly_interest: '',
+        total_amount: '',
         interest_rate: null,
         repayment_period: null,
         start_date: null,
@@ -425,8 +426,10 @@ export default {
     // คำนวณดอกเบี้ยต่อเดือนอัตโนมัติ (1% ของเงินต้น) และตั้งค่าอื่นๆ
     calculateMonthlyInterest() {
       if (this.loan.loan_balance && !isNaN(this.loan.loan_balance)) {
+        const principal = parseFloat(this.loan.loan_balance);
+
         // คำนวณดอกเบี้ย 1% ของเงินต้น
-        this.loan.monthly_interest = parseFloat(this.loan.loan_balance) * 0.01;
+        this.loan.monthly_interest = principal * 0.01;
 
         // ปัดเศษให้เป็นจำนวนเต็ม (ถ้าต้องการ)
         this.loan.monthly_interest = Math.round(this.loan.monthly_interest);
@@ -436,6 +439,11 @@ export default {
 
         // ตั้งค่าระยะเวลาชำระคืนเป็น 12 เดือน (1 ปี)
         this.loan.repayment_period = 12;
+
+        // คำนวณยอดเงินรวม (เงินต้น + ดอกเบี้ยทั้งหมด)
+        // เงินต้น + (ดอกเบี้ยต่อเดือน x จำนวนเดือน)
+        const totalInterest = this.loan.monthly_interest * this.loan.repayment_period;
+        this.loan.total_amount = principal + totalInterest;
 
         // ตั้งค่าวันที่เริ่มต้นเป็นวันที่ปัจจุบัน
         const today = new Date();
@@ -447,6 +455,7 @@ export default {
         this.loan.end_date = endDate.toISOString().split('T')[0];
       } else {
         this.loan.monthly_interest = '';
+        this.loan.total_amount = '';
       }
     },
 
@@ -623,6 +632,7 @@ export default {
         first_payment_date: '',
         loan_balance: '',
         monthly_interest: '',
+        total_amount: '',
         interest_rate: null,
         repayment_period: null,
         start_date: null,

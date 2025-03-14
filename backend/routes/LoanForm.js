@@ -9,7 +9,7 @@ router.post('/', verifyToken, async (req, res) => {
   try {
     const {
       member_id,
-      loan_amount,
+      loan_balance,
       interest_rate,
       repayment_period,
       start_date,
@@ -22,10 +22,10 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Insert loan data
     const [loanResult] = await db.query(
-      `INSERT INTO loan (member_id, loan_amount, interest_rate, repayment_period, start_date, end_date, guarantee_required, created_by, updated_by)
+      `INSERT INTO loan (member_id, loan_balance, interest_rate, repayment_period, start_date, end_date, guarantee_required, created_by, updated_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        member_id, loan_amount, interest_rate, repayment_period, start_date, end_date, guarantee_required, req.userId, req.userId
+        member_id, loan_balance, interest_rate, repayment_period, start_date, end_date, guarantee_required, req.userId, req.userId
       ]
     );
 

@@ -44,6 +44,10 @@
           <div class="balance-label">ยอดเงินกู้คงเหลือ:</div>
           <div class="balance-value loan">{{ formatCurrency(memberBalance.loan_balance || 0) }}</div>
         </div>
+        <div class="balance-row" v-if="totalLoanAmount > 0">
+          <div class="balance-label">ยอดเงินรวม (เงินต้น+ดอกเบี้ย):</div>
+          <div class="balance-value loan">{{ formatCurrency(totalLoanAmount) }}</div>
+        </div>
       </div>
     </div>
     
@@ -272,6 +276,17 @@ export default {
     hasLoans() {
       return this.memberBalance && this.memberBalance.loan_balance > 0;
     },
+    totalLoanAmount() {
+      if (!this.memberLoans || this.memberLoans.length === 0) {
+        return 0;
+      }
+
+      // Calculate total loan amount (principal + interest)
+      const principal = this.memberBalance.loan_balance || 0;
+      const monthlyInterest = principal * 0.01; // 1% monthly interest
+      const totalInterest = monthlyInterest * 12; // 12 months
+      return principal + totalInterest;
+    },
     // กรองธุรกรรมตามประเภท
     filteredTransactions() {
       if (this.transactionFilter === 'all') {
@@ -335,6 +350,9 @@ export default {
           loan.member_id === parseInt(this.selectedMemberId)
         );
 
+        // ตรวจสอบว่ามีข้อมูลเงินกู้หรือไม่
+        console.log('Member loans:', this.memberLoans);
+
         // ดึงประวัติธุรกรรม
         const transactionsResponse = await api.getMemberTransactions(this.selectedMemberId);
         this.transactions = transactionsResponse.data;
@@ -369,8 +387,9 @@ export default {
         case 'withdraw':
           return 'ถอนเงิน';
         case 'loan_repayment':
-          return 'ชำระเงินกู้';
-        default:
+        case 'loan_disbursement': // ✅ ต้องเพิ่มตรงนี้
+      return 'รับเงินกู้';
+    default:
           return '';
       }
     },

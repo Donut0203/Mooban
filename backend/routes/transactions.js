@@ -68,6 +68,7 @@ router.post('/deposit', verifyToken, async (req, res) => {
       `INSERT INTO transactions (
         member_id, transaction_status, amount, created_by, updated_by
       ) VALUES (?, 'deposit', ?, ?, ?)`,
+
       [member_id, amount, req.userId, req.userId]
     );
     
@@ -154,6 +155,7 @@ router.post('/withdraw', verifyToken, async (req, res) => {
       `INSERT INTO transactions (
         member_id, transaction_status, amount, created_by, updated_by
       ) VALUES (?, 'withdraw', ?, ?, ?)`,
+
       [member_id, amount, req.userId, req.userId]
     );
     
@@ -225,6 +227,7 @@ router.post('/loan-repayment', verifyToken, async (req, res) => {
       `INSERT INTO transactions (
         member_id, transaction_status, amount, created_by, updated_by
       ) VALUES (?, 'loan_repayment', ?, ?, ?)`,
+
       [member_id, amount, req.userId, req.userId]
     );
     
@@ -247,6 +250,7 @@ router.post('/loan-repayment', verifyToken, async (req, res) => {
       await connection.query(
         `INSERT INTO deposit_balance (member_id, loan_balance) 
          VALUES (?, ?)`,
+
         [member_id, -amount]
       );
     }
