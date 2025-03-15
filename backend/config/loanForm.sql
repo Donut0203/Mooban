@@ -77,3 +77,19 @@ CREATE TABLE IF NOT EXISTS transactions (
   FOREIGN KEY (member_id) REFERENCES member(member_id)  -- เชื่อมโยงกับตาราง members
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE loan_repayments (
+    repayment_id INT(11) PRIMARY KEY AUTO_INCREMENT,  -- รหัสธุรกรรมการชำระเงินกู้
+    loan_id INT(11) NOT NULL,                         -- อ้างอิงไปยังตาราง loanagreement
+    member_id INT(11) NOT NULL,                       -- อ้างอิงถึงสมาชิกที่ชำระเงินกู้
+    payment_date DATE NOT NULL,                       -- วันที่ชำระเงิน
+    amount_paid DECIMAL(15,2) NOT NULL,               -- จำนวนเงินที่ชำระ
+    remaining_balance DECIMAL(15,2) NOT NULL,         -- ยอดเงินกู้คงเหลือหลังชำระ
+    payment_method VARCHAR(50) NOT NULL,              -- วิธีการชำระ (โอนเงิน, เงินสด ฯลฯ)
+    transaction_reference VARCHAR(100) DEFAULT NULL,  -- หมายเลขอ้างอิงการทำธุรกรรม (ถ้ามี)
+    created_by INT(11) DEFAULT NULL,                  -- ผู้บันทึกข้อมูล
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,   -- เวลาที่สร้างรายการ
+    updated_by INT(11) DEFAULT NULL,                  -- ผู้ที่อัปเดตรายการล่าสุด
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (loan_id) REFERENCES loanagreement(loan_id) ON DELETE CASCADE,
+    FOREIGN KEY (member_id) REFERENCES loanagreement(member_id) ON DELETE CASCADE
+);

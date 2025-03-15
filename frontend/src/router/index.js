@@ -104,9 +104,21 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/loan-repayment',
+    name: 'loanRepaymentForm',
+    component: () => import('../views/LoanRepaymentForm.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/transaction-history',
     name: 'transactionHistory',
     component: () => import('../views/TransactionHistory.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/loan-transaction-history',
+    name: 'loanTransactionHistory',
+    component: () => import('../views/LoanTransactionHistory.vue'),
     meta: { requiresAuth: true }
   }
 ]

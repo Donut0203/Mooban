@@ -1,4 +1,78 @@
--- แก้ไขปัญหาการแสดงยอดเงินกู้และการแยกธุรกรรมรับเงินกู้ออกจากเงินฝาก
+-- Fix loan transactions and balances
+
+-- 1. Add loan_id column to transactions table if it doesn't exist
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS loan_id INT(11) NULL AFTER member_id;
+
+-- 2. Add foreign key constraint to loan_id if it doesn't exist
+ALTER TABLE transactions 
+ADD CONSTRAINT IF NOT EXISTS fk_transactions_loan_id 
+FOREIGN KEY (loan_id) REFERENCES loanagreement(loan_id) ON DELETE SET NULL;
+
+-- 3. Create migrations table if it doesn't exist
+CREATE TABLE IF NOT EXISTS migrations (
+  migration_id INT(11) NOT NULL AUTO_INCREMENT,
+  migration_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (migration_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 4. Fix loan balances by recalculating from transactions
+-- First, create a temporary table to store the correct loan balances
+CREATE TEMPORARY TABLE temp_loan_balances AS
+SELECT 
+  member_id,
+  SUM(CASE 
+    WHEN transaction_status = 'loan_disbursement' THEN amount
+    WHEN transaction_status = 'loan_repayment' THEN -amount
+    ELSE 0
+  END) AS loan_balance
+FROM transactions
+WHERE transaction_status IN ('loan_disbursement', 'loan_repayment')
+GROUP BY member_id;
+
+-- 5. Update deposit_balance table with correct loan balances
+UPDATE deposit_balance db
+JOIN temp_loan_balances tlb ON db.member_id = tlb.member_id
+SET db.loan_balance = tlb.loan_balance;
+
+-- 6. Insert new records for members who have loans but no deposit_balance record
+INSERT INTO deposit_balance (member_id, deposit_balance, loan_balance)
+SELECT 
+  tlb.member_id, 
+  0 AS deposit_balance, 
+  tlb.loan_balance
+FROM temp_loan_balances tlb
+LEFT JOIN deposit_balance db ON tlb.member_id = db.member_id
+WHERE db.member_id IS NULL;
+
+-- 7. Create views for easier data access
+-- View for member with balance
+CREATE OR REPLACE VIEW member_with_balance AS
+SELECT 
+  m.*, 
+  COALESCE(db.deposit_balance, 0) AS deposit_balance,
+  COALESCE(db.loan_balance, 0) AS loan_balance
+FROM 
+  member m
+LEFT JOIN 
+  deposit_balance db ON m.member_id = db.member_id;
+
+-- View for transactions by type
+CREATE OR REPLACE VIEW transactions_by_type AS
+SELECT 
+  t.*,
+  CASE 
+    WHEN t.transaction_status IN ('deposit', 'withdraw') THEN 'deposit'
+    WHEN t.transaction_status IN ('loan_repayment', 'loan_disbursement') THEN 'loan'
+    ELSE 'other'
+  END AS transaction_category
+FROM 
+  transactions t;
+
+-- 8. Record this migration
+INSERT INTO migrations (migration_name, description, applied_at) 
+VALUES ('fix_loan_transactions', 'Fix loan transactions and balances', NOW());-- แก้ไขปัญหาการแสดงยอดเงินกู้และการแยกธุรกรรมรับเงินกู้ออกจากเงินฝาก
 
 -- 1. เพิ่มคอลัมน์ loan_id ในตาราง transactions ถ้ายังไม่มี
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS loan_id INT(11) NULL AFTER member_id;

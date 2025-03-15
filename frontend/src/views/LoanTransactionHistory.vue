@@ -1,6 +1,6 @@
 <template>
   <div class="transaction-history-container">
-    <h1>ประวัติการฝากถอนเงิน</h1>
+    <h1>ประวัติการกู้ยืมและชำระเงินกู้</h1>
     
     <!-- ตัวกรองข้อมูล -->
     <div class="filters">
@@ -18,9 +18,8 @@
         <label for="type-filter">กรองตามประเภทธุรกรรม</label>
         <select id="type-filter" v-model="typeFilter">
           <option value="">ทั้งหมด</option>
-          <option value="deposit">ฝากเงิน</option>
-          <option value="withdraw">ถอนเงิน</option>
-
+          <option value="loan_repayment">ชำระเงินกู้</option>
+          <option value="loan_disbursement">รับเงินกู้</option>
         </select>
       </div>
       
@@ -44,16 +43,14 @@
       </div>
       
       <div class="summary-card">
-        <div class="summary-title">ยอดฝากรวม</div>
-        <div class="summary-value deposit">{{ formatCurrency(totalDeposit) }}</div>
+        <div class="summary-title">ยอดรับเงินกู้รวม</div>
+        <div class="summary-value disbursement">{{ formatCurrency(totalDisbursement) }}</div>
       </div>
       
       <div class="summary-card">
-        <div class="summary-title">ยอดถอนรวม</div>
-        <div class="summary-value withdraw">{{ formatCurrency(totalWithdraw) }}</div>
+        <div class="summary-title">ยอดชำระเงินกู้รวม</div>
+        <div class="summary-value repayment">{{ formatCurrency(totalRepayment) }}</div>
       </div>
-      
-
     </div>
     
     <!-- ตารางแสดงข้อมูล -->
@@ -175,32 +172,32 @@ export default {
     },
     filteredTransactions() {
       return this.transactions.filter(transaction => {
-        // Only include deposit and withdraw transactions
-        if (transaction.transaction_status !== 'deposit' && transaction.transaction_status !== 'withdraw') {
+        // Only include loan-related transactions
+        if (transaction.transaction_status !== 'loan_repayment' && transaction.transaction_status !== 'loan_disbursement') {
           return false;
         }
-
+        
         // Filter by member
         if (this.memberFilter && transaction.member_id !== parseInt(this.memberFilter)) {
           return false;
         }
-
+        
         // Filter by transaction type
         if (this.typeFilter && transaction.transaction_status !== this.typeFilter) {
           return false;
         }
-
+        
         // Filter by date range
         if (this.dateFrom || this.dateTo) {
           const transactionDate = new Date(transaction.transaction_date);
-
+          
           if (this.dateFrom) {
             const fromDate = new Date(this.dateFrom);
             if (transactionDate < fromDate) {
               return false;
             }
           }
-
+          
           if (this.dateTo) {
             const toDate = new Date(this.dateTo);
             toDate.setHours(23, 59, 59, 999); // End of the day
@@ -209,7 +206,7 @@ export default {
             }
           }
         }
-
+        
         return true;
       }).sort((a, b) => {
         let valueA = a[this.sortKey];
@@ -240,14 +237,14 @@ export default {
     totalPages() {
       return Math.ceil(this.filteredTransactions.length / this.itemsPerPage);
     },
-    totalDeposit() {
+    totalDisbursement() {
       return this.filteredTransactions
-        .filter(t => t.transaction_status === 'deposit')
+        .filter(t => t.transaction_status === 'loan_disbursement')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     },
-    totalWithdraw() {
+    totalRepayment() {
       return this.filteredTransactions
-        .filter(t => t.transaction_status === 'withdraw')
+        .filter(t => t.transaction_status === 'loan_repayment')
         .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     }
   },
@@ -323,19 +320,19 @@ export default {
     },
     formatTransactionType(type) {
       switch (type) {
-        case 'deposit':
-          return 'ฝากเงิน';
-        case 'withdraw':
-          return 'ถอนเงิน';
+        case 'loan_repayment':
+          return 'ชำระเงินกู้';
+        case 'loan_disbursement':
+          return 'รับเงินกู้';
         default:
           return type;
       }
     },
     getAmountClass(type) {
       switch (type) {
-        case 'deposit':
+        case 'loan_disbursement':
           return 'amount-positive';
-        case 'withdraw':
+        case 'loan_repayment':
           return 'amount-negative';
         default:
           return '';
@@ -354,7 +351,7 @@ export default {
       }
       
       // Prepare data for the report
-      const title = 'รายงานการฝากถอนเงิน';
+      const title = 'รายงานการกู้ยืมและชำระเงินกู้';
       const date = new Date().toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'long',
@@ -418,14 +415,11 @@ export default {
               font-weight: bold;
               margin-bottom: 5px;
             }
-            .deposit {
+            .disbursement {
               color: #4CAF50;
             }
-            .withdraw {
-              color: #f44336;
-            }
             .repayment {
-              color: #2196F3;
+              color: #f44336;
             }
             table {
               width: 100%;
@@ -478,16 +472,14 @@ export default {
             </div>
             
             <div class="summary-card">
-              <div class="summary-title">ยอดฝากรวม</div>
-              <div class="deposit">${this.formatCurrency(this.totalDeposit)}</div>
+              <div class="summary-title">ยอดรับเงินกู้รวม</div>
+              <div class="disbursement">${this.formatCurrency(this.totalDisbursement)}</div>
             </div>
             
             <div class="summary-card">
-              <div class="summary-title">ยอดถอนรวม</div>
-              <div class="withdraw">${this.formatCurrency(this.totalWithdraw)}</div>
+              <div class="summary-title">ยอดชำระเงินกู้รวม</div>
+              <div class="repayment">${this.formatCurrency(this.totalRepayment)}</div>
             </div>
-            
-
           </div>
           
           <table>
@@ -663,16 +655,12 @@ select, input {
   font-weight: bold;
 }
 
-.summary-value.deposit {
+.summary-value.disbursement {
   color: #4CAF50;
 }
 
-.summary-value.withdraw {
-  color: #f44336;
-}
-
 .summary-value.repayment {
-  color: #2196F3;
+  color: #f44336;
 }
 
 /* Table */

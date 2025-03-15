@@ -1,6 +1,6 @@
 <template>
-  <div class="transaction-container">
-    <h1>ระบบฝาก-ถอนเงิน</h1>
+  <div class="loan-repayment-container">
+    <h1>ระบบชำระเงินกู้</h1>
     
     <!-- เลือกสมาชิก -->
     <div class="member-selection">
@@ -37,10 +37,6 @@
       <div class="balance-card">
         <h3>ยอดเงินปัจจุบัน</h3>
         <div class="balance-row">
-          <div class="balance-label">ยอดเงินฝาก:</div>
-          <div class="balance-value deposit">{{ formatCurrency(memberBalance.deposit_balance || 0) }}</div>
-        </div>
-        <div class="balance-row">
           <div class="balance-label">ยอดเงินกู้คงเหลือ:</div>
           <div class="balance-value loan">{{ formatCurrency(memberBalance.loan_balance || 0) }}</div>
         </div>
@@ -51,42 +47,25 @@
       </div>
     </div>
     
-    <!-- เลือกประเภทธุรกรรม -->
-    <div v-if="selectedMemberId" class="transaction-type-selection">
-      <h2>เลือกประเภทธุรกรรม</h2>
-      <div class="transaction-types">
-        <div 
-          class="transaction-type-card" 
-          :class="{ active: transactionType === 'deposit' }"
-          @click="selectTransactionType('deposit')"
-        >
-          <div class="icon">💰</div>
-          <div class="label">ฝากเงิน</div>
-        </div>
-        <div 
-          class="transaction-type-card" 
-          :class="{ active: transactionType === 'withdraw', disabled: !canWithdraw }"
-          @click="canWithdraw && selectTransactionType('withdraw')"
-        >
-          <div class="icon">💸</div>
-          <div class="label">ถอนเงิน</div>
-          <div v-if="!canWithdraw" class="disabled-message">ยอดเงินไม่เพียงพอ</div>
-        </div>
-
-      </div>
-    </div>
-    
-    <!-- ฟอร์มทำธุรกรรม -->
-    <div v-if="transactionType" class="transaction-form">
-      <h2>{{ getTransactionTypeTitle() }}</h2>
+    <!-- ฟอร์มชำระเงินกู้ -->
+    <div v-if="selectedMemberId && hasLoans" class="loan-repayment-form">
+      <h2>ชำระเงินกู้</h2>
       
-      <!-- ฟอร์มฝากเงิน -->
-      <form v-if="transactionType === 'deposit'" @submit.prevent="submitDeposit" class="form">
+      <form @submit.prevent="submitLoanRepayment" class="form">
         <div class="form-group">
-          <label for="deposit_amount">จำนวนเงินฝาก (บาท) *</label>
+          <label for="loan_id">เลือกสัญญาเงินกู้ *</label>
+          <select v-model="selectedLoanId" id="loan_id" required>
+            <option value="">-- เลือกสัญญาเงินกู้ --</option>
+            <option v-for="loan in memberLoans" :key="loan.loan_id" :value="loan.loan_id">
+              สัญญาเลขที่ {{ loan.loan_id }} - {{ formatCurrency(loan.loan_balance) }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="repayment_amount">จำนวนเงินชำระ (บาท) *</label>
           <input 
             type="number" 
-            id="deposit_amount" 
+            id="repayment_amount" 
             v-model="amount" 
             min="1" 
             step="0.01" 
@@ -96,57 +75,18 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn-cancel" @click="resetForm">ยกเลิก</button>
-          <button type="submit" class="btn-submit">ยืนยันการฝากเงิน</button>
+          <button type="submit" class="btn-submit">ยืนยันการชำระเงินกู้</button>
         </div>
       </form>
-      
-      <!-- ฟอร์มถอนเงิน -->
-      <form v-if="transactionType === 'withdraw'" @submit.prevent="submitWithdraw" class="form">
-        <div class="form-group">
-          <label for="withdraw_amount">จำนวนเงินถอน (บาท) *</label>
-          <input 
-            type="number" 
-            id="withdraw_amount" 
-            v-model="amount" 
-            min="1" 
-            :max="memberBalance.deposit_balance" 
-            step="0.01" 
-            required
-            placeholder="กรุณาระบุจำนวนเงิน"
-          >
-          <div class="hint">ยอดเงินสูงสุดที่ถอนได้: {{ formatCurrency(memberBalance.deposit_balance) }}</div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn-cancel" @click="resetForm">ยกเลิก</button>
-          <button type="submit" class="btn-submit">ยืนยันการถอนเงิน</button>
-        </div>
-      </form>
-      
-
     </div>
     
-    <!-- ประวัติธุรกรรม -->
-    <div v-if="selectedMemberId && transactions.length > 0" class="transaction-history">
-      <h2>ประวัติธุรกรรม</h2>
-
-      <!-- แท็บเลือกประเภทธุรกรรม -->
-      <div class="transaction-tabs">
-        <button
-          class="tab-button"
-          :class="{ active: transactionFilter === 'all' }"
-          @click="transactionFilter = 'all'"
-        >
-          ทั้งหมด
-        </button>
-        <button
-          class="tab-button"
-          :class="{ active: transactionFilter === 'deposit' }"
-          @click="transactionFilter = 'deposit'"
-        >
-          ฝาก-ถอน
-        </button>
-
-      </div>
+    <div v-else-if="selectedMemberId && !hasLoans" class="no-loans-message">
+      <p>สมาชิกนี้ไม่มียอดเงินกู้คงเหลือ</p>
+    </div>
+    
+    <!-- ประวัติการชำระเงินกู้ -->
+    <div v-if="selectedMemberId && loanTransactions.length > 0" class="transaction-history">
+      <h2>ประวัติการชำระเงินกู้</h2>
 
       <table class="transaction-table">
         <thead>
@@ -157,7 +97,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="transaction in filteredTransactions" :key="transaction.transaction_id">
+          <tr v-for="transaction in loanTransactions" :key="transaction.transaction_id">
             <td>{{ formatDate(transaction.transaction_date) }}</td>
             <td>{{ formatTransactionType(transaction.transaction_status) }}</td>
             <td :class="getAmountClass(transaction.transaction_status)">
@@ -167,8 +107,8 @@
         </tbody>
       </table>
 
-      <div v-if="filteredTransactions.length === 0" class="no-transactions">
-        ไม่พบรายการธุรกรรมในประเภทที่เลือก
+      <div v-if="loanTransactions.length === 0" class="no-transactions">
+        ไม่พบรายการชำระเงินกู้
       </div>
     </div>
     
@@ -184,11 +124,7 @@
             {{ resultMessage }}
           </div>
           <div v-if="isSuccess" class="balance-update">
-            <div v-if="resultModalTitle.includes('ฝากเงิน') || resultModalTitle.includes('ถอนเงิน')" class="balance-row">
-              <div class="balance-label">ยอดเงินฝากปัจจุบัน:</div>
-              <div class="balance-value deposit">{{ formatCurrency(updatedBalance) }}</div>
-            </div>
-            <div v-if="resultModalTitle.includes('ชำระเงินกู้') || resultModalTitle.includes('รับเงินกู้')" class="balance-row">
+            <div class="balance-row">
               <div class="balance-label">ยอดเงินกู้คงเหลือ:</div>
               <div class="balance-value loan">{{ formatCurrency(updatedBalance) }}</div>
             </div>
@@ -216,11 +152,9 @@ export default {
         loan_balance: 0
       },
       memberLoans: [],
-      transactionType: '',
-      amount: '',
       selectedLoanId: '',
+      amount: '',
       transactions: [],
-      transactionFilter: 'all', // เพิ่มตัวกรองประเภทธุรกรรม: 'all', 'deposit', 'loan'
       showResultModal: false,
       resultModalTitle: '',
       resultMessage: '',
@@ -229,9 +163,6 @@ export default {
     };
   },
   computed: {
-    canWithdraw() {
-      return this.memberBalance && this.memberBalance.deposit_balance > 0;
-    },
     hasLoans() {
       return this.memberBalance && this.memberBalance.loan_balance > 0;
     },
@@ -246,19 +177,9 @@ export default {
       const totalInterest = monthlyInterest * 12; // 12 months
       return principal + totalInterest;
     },
-    // กรองธุรกรรมตามประเภท
-    filteredTransactions() {
-      if (this.transactionFilter === 'all') {
-        return this.transactions.filter(t =>
-          t.transaction_status === 'deposit' || t.transaction_status === 'withdraw'
-        );
-      } else if (this.transactionFilter === 'deposit') {
-        return this.transactions.filter(t =>
-          t.transaction_status === 'deposit' || t.transaction_status === 'withdraw'
-        );
-      }
+    loanTransactions() {
       return this.transactions.filter(t =>
-        t.transaction_status === 'deposit' || t.transaction_status === 'withdraw'
+        t.transaction_status === 'loan_repayment' || t.transaction_status === 'loan_disbursement'
       );
     }
   },
@@ -334,21 +255,6 @@ export default {
         alert('ไม่สามารถโหลดข้อมูลสมาชิกได้');
       }
     },
-    selectTransactionType(type) {
-      this.transactionType = type;
-      this.amount = '';
-      this.selectedLoanId = '';
-    },
-    getTransactionTypeTitle() {
-      switch (this.transactionType) {
-        case 'deposit':
-          return 'ฝากเงิน';
-        case 'withdraw':
-          return 'ถอนเงิน';
-        default:
-          return '';
-      }
-    },
     formatAddress(member) {
       if (!member) return '';
       
@@ -385,78 +291,49 @@ export default {
     },
     formatTransactionType(type) {
       switch (type) {
-        case 'deposit':
-          return 'ฝากเงิน';
-        case 'withdraw':
-          return 'ถอนเงิน';
+        case 'loan_repayment':
+          return 'ชำระเงินกู้';
+        case 'loan_disbursement':
+          return 'รับเงินกู้';
         default:
           return type;
       }
     },
     getAmountClass(type) {
       switch (type) {
-        case 'deposit':
+        case 'loan_disbursement':
           return 'amount-positive';
-        case 'withdraw':
+        case 'loan_repayment':
           return 'amount-negative';
         default:
           return '';
       }
     },
-    async submitDeposit() {
-      if (!this.selectedMemberId || !this.amount || this.amount <= 0) {
+    async submitLoanRepayment() {
+      if (!this.selectedMemberId || !this.selectedLoanId || !this.amount || this.amount <= 0) {
         alert('กรุณากรอกข้อมูลให้ครบถ้วน');
         return;
       }
       
       try {
-        const response = await api.depositMoney({
+        const response = await api.repayLoan({
           member_id: this.selectedMemberId,
+          loan_id: this.selectedLoanId,
           amount: parseFloat(this.amount)
         });
         
         this.showSuccessResult(
-          'ฝากเงินสำเร็จ',
-          `ฝากเงินจำนวน ${this.formatCurrency(this.amount)} เรียบร้อยแล้ว`,
-          response.data.current_balance
+          'ชำระเงินกู้สำเร็จ',
+          `ชำระเงินกู้จำนวน ${this.formatCurrency(this.amount)} เรียบร้อยแล้ว`,
+          response.data.current_loan_balance
         );
         
         // รีเฟรชข้อมูล
         this.loadMemberData();
       } catch (error) {
-        console.error('Error depositing money:', error);
-        this.showErrorResult('เกิดข้อผิดพลาด', 'ไม่สามารถฝากเงินได้ กรุณาลองใหม่อีกครั้ง');
-      }
-    },
-    async submitWithdraw() {
-      if (!this.selectedMemberId || !this.amount || this.amount <= 0) {
-        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-        return;
-      }
-      
-      if (parseFloat(this.amount) > this.memberBalance.deposit_balance) {
-        alert('จำนวนเงินที่ต้องการถอนมากกว่ายอดเงินคงเหลือ');
-        return;
-      }
-      
-      try {
-        const response = await api.withdrawMoney({
-          member_id: this.selectedMemberId,
-          amount: parseFloat(this.amount)
-        });
+        console.error('Error repaying loan:', error);
         
-        this.showSuccessResult(
-          'ถอนเงินสำเร็จ',
-          `ถอนเงินจำนวน ${this.formatCurrency(this.amount)} เรียบร้อยแล้ว`,
-          response.data.current_balance
-        );
-        
-        // รีเฟรชข้อมูล
-        this.loadMemberData();
-      } catch (error) {
-        console.error('Error withdrawing money:', error);
-        
-        let errorMessage = 'ไม่สามารถถอนเงินได้ กรุณาลองใหม่อีกครั้ง';
+        let errorMessage = 'ไม่สามารถชำระเงินกู้ได้ กรุณาลองใหม่อีกครั้ง';
         if (error.response && error.response.data && error.response.data.message) {
           errorMessage = error.response.data.message;
         }
@@ -464,7 +341,6 @@ export default {
         this.showErrorResult('เกิดข้อผิดพลาด', errorMessage);
       }
     },
-
     showSuccessResult(title, message, balance) {
       this.resultModalTitle = title;
       this.resultMessage = message;
@@ -483,9 +359,8 @@ export default {
       this.resetTransactionForm();
     },
     resetTransactionForm() {
-      this.transactionType = '';
-      this.amount = '';
       this.selectedLoanId = '';
+      this.amount = '';
     },
     resetForm() {
       this.memberData = null;
@@ -502,7 +377,7 @@ export default {
 </script>
 
 <style scoped>
-.transaction-container {
+.loan-repayment-container {
   max-width: 1000px;
   margin: 0 auto;
   padding: 20px;
@@ -588,7 +463,7 @@ select:focus, input:focus {
 
 .info-label, .balance-label {
   font-weight: bold;
-  width: 120px;
+  width: 150px;
   color: #555;
 }
 
@@ -596,75 +471,13 @@ select:focus, input:focus {
   flex: 1;
 }
 
-.balance-value.deposit {
-  color: #4CAF50;
-  font-weight: bold;
-}
-
 .balance-value.loan {
   color: #f44336;
   font-weight: bold;
 }
 
-/* Transaction type selection */
-.transaction-type-selection {
-  margin-bottom: 20px;
-}
-
-.transaction-types {
-  display: flex;
-  gap: 20px;
-  justify-content: space-between;
-}
-
-.transaction-type-card {
-  flex: 1;
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.transaction-type-card:hover:not(.disabled) {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.transaction-type-card.active {
-  background-color: #e8f5e9;
-  border: 2px solid #4CAF50;
-}
-
-.transaction-type-card.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.transaction-type-card .icon {
-  font-size: 36px;
-  margin-bottom: 10px;
-}
-
-.transaction-type-card .label {
-  font-weight: bold;
-  color: #333;
-}
-
-.disabled-message {
-  position: absolute;
-  bottom: 5px;
-  left: 0;
-  right: 0;
-  font-size: 12px;
-  color: #f44336;
-}
-
-/* Transaction form */
-.transaction-form {
+/* Loan repayment form */
+.loan-repayment-form {
   background-color: #f9f9f9;
   padding: 20px;
   border-radius: 8px;
@@ -675,12 +488,6 @@ select:focus, input:focus {
 .form {
   max-width: 500px;
   margin: 0 auto;
-}
-
-.hint {
-  font-size: 14px;
-  color: #666;
-  margin-top: 5px;
 }
 
 .form-actions {
@@ -728,42 +535,21 @@ button {
   background-color: #0b7dda;
 }
 
+/* No loans message */
+.no-loans-message {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
 /* Transaction history */
 .transaction-history {
   margin-top: 30px;
-}
-
-.transaction-tabs {
-  display: flex;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #ddd;
-}
-
-.tab-button {
-  padding: 8px 15px;
-  background-color: #f5f5f5;
-  border: none;
-  border-radius: 4px 4px 0 0;
-  cursor: pointer;
-  margin-right: 5px;
-  font-size: 14px;
-  color: #555;
-}
-
-.tab-button.active {
-  background-color: #4CAF50;
-  color: white;
-  font-weight: bold;
-}
-
-.no-transactions {
-  text-align: center;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  margin-top: 10px;
-  color: #666;
-  font-style: italic;
 }
 
 .transaction-table {
@@ -796,6 +582,16 @@ button {
 .amount-negative {
   color: #f44336;
   font-weight: bold;
+}
+
+.no-transactions {
+  text-align: center;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-top: 10px;
+  color: #666;
+  font-style: italic;
 }
 
 /* Modal */
@@ -885,14 +681,6 @@ button {
 @media (max-width: 768px) {
   .member-info {
     flex-direction: column;
-  }
-  
-  .transaction-types {
-    flex-direction: column;
-  }
-  
-  .transaction-type-card {
-    margin-bottom: 10px;
   }
 }
 </style>

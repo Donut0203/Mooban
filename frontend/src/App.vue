@@ -58,8 +58,10 @@
               <i class="dropdown-icon" :class="{'dropdown-icon-open': showTransactionMenu}">▼</i>
             </div>
             <div class="dropdown-content" v-show="showTransactionMenu">
-              <router-link to="/transactions" class="sidebar-menu-item submenu-item"><span class="menu-emoji">💱</span> ฝาก-ถอน-ชำระเงินกู้</router-link>
-              <router-link to="/transaction-history" class="sidebar-menu-item submenu-item"><span class="menu-emoji">📊</span> ประวัติธุรกรรม</router-link>
+              <router-link to="/transactions" class="sidebar-menu-item submenu-item"><span class="menu-emoji">💱</span> ฝาก-ถอนเงิน</router-link>
+              <router-link to="/loan-repayment" class="sidebar-menu-item submenu-item"><span class="menu-emoji">💰</span> ชำระเงินกู้</router-link>
+              <router-link to="/transaction-history" class="sidebar-menu-item submenu-item"><span class="menu-emoji">📊</span> ประวัติการฝากถอนเงิน</router-link>
+              <router-link to="/loan-transaction-history" class="sidebar-menu-item submenu-item"><span class="menu-emoji">📝</span> ประวัติการกู้ยืมและชำระเงินกู้</router-link>
             </div>
           </div>
 
