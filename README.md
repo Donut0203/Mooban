@@ -20,6 +20,12 @@ npm install
 ```
 mysql -u username -p database_name < config/db.sql
 mysql -u username -p database_name < config/members.sql
+mysql -u username -p database_name < config/loanForm.sql
+```
+
+4. รันไฟล์ migrations เพื่ออัปเดตโครงสร้างฐานข้อมูล
+```
+node run_migrations.js
 ```
 
 4. สร้างไฟล์ .env และกำหนดค่าต่างๆ

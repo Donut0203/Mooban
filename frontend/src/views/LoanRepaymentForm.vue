@@ -40,15 +40,15 @@
           <div class="balance-label">ยอดเงินกู้คงเหลือ:</div>
           <div class="balance-value loan">{{ formatCurrency(memberBalance.loan_balance || 0) }}</div>
         </div>
-        <div class="balance-row" v-if="totalLoanAmount > 0">
+        <!-- <div class="balance-row" v-if="totalLoanAmount > 0">
           <div class="balance-label">ยอดเงินรวม (เงินต้น+ดอกเบี้ย):</div>
           <div class="balance-value loan">{{ formatCurrency(totalLoanAmount) }}</div>
-        </div>
+        </div> -->
       </div>
     </div>
     
     <!-- ฟอร์มชำระเงินกู้ -->
-    <div v-if="selectedMemberId && hasLoans" class="loan-repayment-form">
+    <div v-if="selectedMemberId" class="loan-repayment-form">
       <h2>ชำระเงินกู้</h2>
       
       <form @submit.prevent="submitLoanRepayment" class="form">
@@ -179,7 +179,7 @@ export default {
     },
     loanTransactions() {
       return this.transactions.filter(t =>
-        t.transaction_status === 'loan_repayment' || t.transaction_status === 'loan_disbursement'
+        t.transaction_status === 'loan_withdrawal' || t.transaction_status === 'loan_repayment'
       );
     }
   },
@@ -293,7 +293,7 @@ export default {
       switch (type) {
         case 'loan_repayment':
           return 'ชำระเงินกู้';
-        case 'loan_disbursement':
+        case 'loan_withdrawal':
           return 'รับเงินกู้';
         default:
           return type;

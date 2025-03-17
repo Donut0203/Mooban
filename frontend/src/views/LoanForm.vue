@@ -583,10 +583,10 @@ export default {
             alert('บันทึกข้อมูลสำเร็จ');
 
             // สร้างรายการธุรกรรมการรับเงินกู้
-            return api.depositMoney({
-              member_id: this.loan.member_id,
-              amount: parseFloat(this.loan.loan_balance)
-            });
+            // return api.withdrawLoan({
+            //   member_id: this.loan.member_id,
+            //   amount: parseFloat(this.loan.total_amount)
+            // });
           })
           .then(() => {
             // รีเซ็ตฟอร์มหลังจากบันทึกสำเร็จ

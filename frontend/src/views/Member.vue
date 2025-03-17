@@ -633,7 +633,7 @@ export default {
 
       // จัดรูปแบบที่อยู่และยอดเงินก่อนสร้าง HTML
       const formattedAddress = this.formatAddress(member);
-      const formattedBalance = this.formatCurrency(member.balance);
+      // const formattedBalance = this.formatCurrency(member.balance);
 
       // สร้าง HTML สำหรับการพิมพ์โดยใช้ DOM API แทนการใช้ string
       printWindow.document.open();
@@ -720,7 +720,7 @@ export default {
       memberInfo.appendChild(createInfoRow('เลขบัญชี:', member.bank_account || '-'));
       memberInfo.appendChild(createInfoRow('เลขบัตรประชาชน:', member.national_id || '-'));
       memberInfo.appendChild(createInfoRow('ที่อยู่:', formattedAddress || '-'));
-      memberInfo.appendChild(createInfoRow('ยอดคงเหลือ:', formattedBalance || '0.00 บาท'));
+      // memberInfo.appendChild(createInfoRow('ยอดคงเหลือ:', formattedBalance || '0.00 บาท'));
 
       // สร้าง DOCUMENTS
       const documents = printWindow.document.createElement('div');

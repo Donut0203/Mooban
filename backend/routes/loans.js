@@ -50,6 +50,7 @@ router.post('/', verifyToken, async (req, res) => {
     console.log('Received loan data:', req.body);
 
     // รับข้อมูลจาก FormData
+    const total_amount = req.body.total_amount
     const member_id = req.body.member_id;
     const loan_balance= req.body.loan_balance;
     const interest_rate = req.body.interest_rate || 1; // ค่าเริ่มต้น 1%
@@ -69,7 +70,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Validate required fields
-    if (!member_id || !loan_balance || !interest_rate || !repayment_period || !start_date || !end_date) {
+    if (!member_id || !total_amount || !interest_rate || !repayment_period || !start_date || !end_date) {
       return res.status(400).json({ message: 'All required fields must be provided' });
     }
 
@@ -80,9 +81,24 @@ router.post('/', verifyToken, async (req, res) => {
         start_date, end_date, guarantee_required, created_by, updated_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        member_id, loan_balance, interest_rate, repayment_period, 
+        member_id, total_amount, interest_rate, repayment_period, 
         start_date, end_date, guarantee_required || 1, req.userId, req.userId
       ]
+    );
+    
+    await db.query(
+      `INSERT INTO transactions (
+        member_id, transaction_status, amount, created_by, updated_by
+      ) VALUES (?, 'loan_withdrawal', ?, ?, ?)`,
+
+      [member_id, total_amount, req.userId, req.userId]
+    );
+
+    await db.query(
+      `UPDATE deposit_balance 
+       SET loan_balance = loan_balance + ? 
+       WHERE member_id = ?`,
+      [total_amount, member_id]
     );
 
     const loanId = loanResult.insertId;

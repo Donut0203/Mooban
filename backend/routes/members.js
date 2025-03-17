@@ -38,7 +38,7 @@ router.get('/', verifyToken, async (req, res) => {
     }
     res.json(members);
   } catch (error) {
-    console.error('Error getting members:', error);
+    console.error('Error getting members:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -52,7 +52,7 @@ router.get('/:id', verifyToken, async (req, res) => {
     }
     res.json(members[0]);
   } catch (error) {
-    console.error('Error getting member:', error);
+    console.error('Error getting member:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -60,6 +60,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Create new member
 router.post('/', verifyToken, async (req, res) => {
   try {
+    // console.log('Request Body:', req.body); // ตรวจสอบข้อมูลที่รับมาจากคำขอ
     const {
       first_name,
       last_name,
@@ -84,7 +85,6 @@ router.post('/', verifyToken, async (req, res) => {
         address_line1, subdistrict, district, province, postal_code,
         id_card_copy, house_registration_copy, balance, created_by, updated_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-
       [
         first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
@@ -97,7 +97,7 @@ router.post('/', verifyToken, async (req, res) => {
       member_id: result.insertId
     });
   } catch (error) {
-    console.error('Error creating member:', error);
+    console.error('Error creating member:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -105,6 +105,7 @@ router.post('/', verifyToken, async (req, res) => {
 // Update member
 router.put('/:id', verifyToken, async (req, res) => {
   try {
+    // console.log('Request Body:', req.body); // ตรวจสอบข้อมูลที่รับมาจากคำขอ
     const {
       first_name,
       last_name,
@@ -120,7 +121,6 @@ router.put('/:id', verifyToken, async (req, res) => {
       postal_code,
       id_card_copy,
       house_registration_copy,
-      balance
     } = req.body;
     
     const [result] = await db.query(
@@ -139,14 +139,13 @@ router.put('/:id', verifyToken, async (req, res) => {
         postal_code = ?,
         id_card_copy = ?,
         house_registration_copy = ?,
-        balance = ?,
         updated_by = ?,
         updated_at = NOW()
       WHERE member_id = ?`,
       [
         first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
-        id_card_copy, house_registration_copy, balance, req.userId, req.params.id
+        id_card_copy, house_registration_copy, req.userId, req.params.id
       ]
     );
     
@@ -156,7 +155,7 @@ router.put('/:id', verifyToken, async (req, res) => {
     
     res.json({ message: 'Member updated successfully' });
   } catch (error) {
-    console.error('Error updating member:', error);
+    console.error('Error updating member:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -170,7 +169,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
     res.json({ message: 'Member deleted successfully' });
   } catch (error) {
-    console.error('Error deleting member:', error);
+    console.error('Error deleting member:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -187,7 +186,7 @@ router.post('/upload', verifyToken, upload.single('file'), (req, res) => {
       fileUrl: fileUrl
     });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file:', error.message); // เพิ่มการแสดงข้อความผิดพลาด
     res.status(500).json({ message: 'Server error during file upload' });
   }
 });
