@@ -83,12 +83,12 @@ router.post('/', verifyToken, async (req, res) => {
       `INSERT INTO member (
         first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
-        id_card_copy, house_registration_copy, balance, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id_card_copy, house_registration_copy, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, 0), ?, ?)`,
       [
         first_name, last_name, phone, birth_date, bank_name, bank_account, national_id,
         address_line1, subdistrict, district, province, postal_code,
-        id_card_copy, house_registration_copy, balance || 0, req.userId, req.userId
+        id_card_copy, house_registration_copy, req.userId, req.userId
       ]
     );
     
