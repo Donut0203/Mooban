@@ -226,8 +226,10 @@ export default {
 
         // ดึงข้อมูลเงินกู้
         const loansResponse = await api.getLoans();
+        // กรองเฉพาะสัญญาเงินกู้ของสมาชิกที่เลือกและมียอดคงเหลือมากกว่า 0
         this.memberLoans = loansResponse.data.filter(loan =>
-          loan.member_id === parseInt(this.selectedMemberId)
+          loan.member_id === parseInt(this.selectedMemberId) &&
+          parseFloat(loan.loan_balance) > 0
         );
 
         // ตรวจสอบว่ามีข้อมูลเงินกู้หรือไม่

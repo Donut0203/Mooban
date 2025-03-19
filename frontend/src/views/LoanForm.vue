@@ -604,6 +604,16 @@ export default {
               console.error('Error response:', error.response.data);
               if (error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message;
+
+                // ถ้ามีข้อมูลสินเชื่อที่มีอยู่แล้ว ให้แสดงลิงก์ไปยังหน้าชำระเงินกู้
+                if (error.response.data.existingLoan) {
+                  const existingLoan = error.response.data.existingLoan;
+                  const confirmRedirect = confirm(`${errorMessage}\n\nต้องการไปที่หน้าชำระเงินกู้หรือไม่?`);
+                  if (confirmRedirect) {
+                    this.$router.push(`/loan-repayment?member_id=${this.loan.member_id}`);
+                    return;
+                  }
+                }
               }
             }
 

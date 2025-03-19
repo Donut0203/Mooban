@@ -141,7 +141,6 @@
             <th>รหัสสมาชิก</th>
             <th>ชื่อ-นามสกุล</th>
             <th>เบอร์โทรศัพท์</th>
-            <th>อายุ</th>
             <th>ธนาคาร</th>
             <th>เลขบัญชี</th>
             <th>เลขบัตรประชาชน</th>
@@ -156,7 +155,6 @@
             <td>{{ member.member_id }}</td>
             <td>{{ member.first_name }} {{ member.last_name }}</td>
             <td>{{ member.phone }}</td>
-            <td>{{ member.birth_date }}</td>
             <td>{{ member.bank_name }}</td>
             <td>{{ member.bank_account }}</td>
             <td>{{ member.national_id }}</td>
@@ -197,7 +195,7 @@
             <div class="detail-value">{{ selectedMember.phone }}</div>
           </div>
           <div class="detail-row">
-            <div class="detail-label">อายุ:</div>
+            <div class="detail-label">วันเกิด:</div>
             <div class="detail-value">{{ selectedMember.birth_date }}</div>
           </div>
           <div class="detail-row">

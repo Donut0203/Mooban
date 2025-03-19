@@ -141,6 +141,7 @@ export default {
   data() {
     return {
       transactions: [],
+      loans: [], // เพิ่มตัวแปรเก็บข้อมูลเงินกู้
       users: {},
       loading: true,
       memberFilter: '',
@@ -238,29 +239,166 @@ export default {
       return Math.ceil(this.filteredTransactions.length / this.itemsPerPage);
     },
     totalDisbursement() {
-      return this.filteredTransactions
-        .filter(t => t.transaction_status === 'loan_disbursement')
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      // ใช้ข้อมูลจากทั้งตาราง transactions และ loans
+      let total = 0;
+
+      // 1. คำนวณจากธุรกรรมรับเงินกู้ (loan_disbursement)
+      const disbursementTransactions = this.filteredTransactions.filter(t => t.transaction_status === 'loan_disbursement');
+      console.log('Disbursement transactions:', disbursementTransactions);
+
+      if (disbursementTransactions.length > 0) {
+        // คำนวณยอดรวมจากธุรกรรมรับเงินกู้
+        const transactionTotal = disbursementTransactions.reduce((sum, t) => {
+          const amount = t.amount !== undefined && t.amount !== null ? t.amount : 0;
+          const parsedAmount = parseFloat(amount);
+
+          if (isNaN(parsedAmount)) {
+            console.error('Invalid amount value:', amount, 'in transaction:', t);
+            return sum;
+          }
+
+          console.log('Adding transaction amount:', parsedAmount, 'from transaction:', t.transaction_id);
+          return sum + parsedAmount;
+        }, 0);
+
+        total += transactionTotal;
+      }
+
+      // 2. คำนวณจากข้อมูลเงินกู้ (loanagreement)
+      // กรองข้อมูลเงินกู้ตามเงื่อนไขการกรอง (สมาชิก, วันที่)
+      const filteredLoans = this.loans.filter(loan => {
+        // กรองตามสมาชิก
+        if (this.memberFilter && loan.member_id !== parseInt(this.memberFilter)) {
+          return false;
+        }
+
+        // กรองตามวันที่
+        if (this.dateFrom || this.dateTo) {
+          const loanDate = new Date(loan.created_at);
+
+          if (this.dateFrom) {
+            const fromDate = new Date(this.dateFrom);
+            if (loanDate < fromDate) {
+              return false;
+            }
+          }
+
+          if (this.dateTo) {
+            const toDate = new Date(this.dateTo);
+            toDate.setHours(23, 59, 59, 999); // End of the day
+            if (loanDate > toDate) {
+              return false;
+            }
+          }
+        }
+
+        return true;
+      });
+
+      console.log('Filtered loans:', filteredLoans);
+
+      // ถ้าไม่มีธุรกรรมรับเงินกู้ ให้ใช้ข้อมูลจากตาราง loans แทน
+      if (disbursementTransactions.length === 0 && filteredLoans.length > 0) {
+        const loanTotal = filteredLoans.reduce((sum, loan) => {
+          const amount = loan.loan_balance !== undefined && loan.loan_balance !== null ? loan.loan_balance : 0;
+          const parsedAmount = parseFloat(amount);
+
+          if (isNaN(parsedAmount)) {
+            console.error('Invalid loan amount:', amount, 'in loan:', loan);
+            return sum;
+          }
+
+          console.log('Adding loan amount:', parsedAmount, 'from loan:', loan.loan_id);
+          return sum + parsedAmount;
+        }, 0);
+
+        total += loanTotal;
+      }
+
+      return total;
     },
     totalRepayment() {
-      return this.filteredTransactions
-        .filter(t => t.transaction_status === 'loan_repayment')
-        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      // ตรวจสอบและแสดงข้อมูลเพื่อการแก้ไขปัญหา
+      const repaymentTransactions = this.filteredTransactions.filter(t => t.transaction_status === 'loan_repayment');
+      console.log('Repayment transactions:', repaymentTransactions);
+
+      // ตรวจสอบว่ามีธุรกรรมชำระเงินกู้หรือไม่
+      if (repaymentTransactions.length === 0) {
+        console.log('No loan repayment transactions found');
+        return 0;
+      }
+
+      // คำนวณยอดรวมโดยตรวจสอบและแปลงค่าให้ถูกต้อง
+      return repaymentTransactions.reduce((sum, t) => {
+        // ตรวจสอบว่า amount เป็นค่าที่ถูกต้องหรือไม่
+        const amount = t.amount !== undefined && t.amount !== null ? t.amount : 0;
+
+        // แปลงเป็นตัวเลขและตรวจสอบว่าเป็นตัวเลขที่ถูกต้องหรือไม่
+        const parsedAmount = parseFloat(amount);
+
+        if (isNaN(parsedAmount)) {
+          console.error('Invalid amount value:', amount, 'in transaction:', t);
+          return sum;
+        }
+
+        console.log('Adding amount:', parsedAmount, 'from transaction:', t.transaction_id);
+        return sum + parsedAmount;
+      }, 0);
     }
   },
   mounted() {
     this.fetchTransactions();
     this.fetchUsers();
+    this.fetchLoans(); // เพิ่มการดึงข้อมูลเงินกู้
   },
   methods: {
     async fetchTransactions() {
       this.loading = true;
       try {
         const response = await api.getAllTransactions();
-        this.transactions = response.data;
+        console.log('All transactions data:', response.data);
+
+        // ตรวจสอบว่าข้อมูลที่ได้รับมาถูกต้องหรือไม่
+        if (!response.data || !Array.isArray(response.data)) {
+          console.error('Invalid transactions data format:', response.data);
+          alert('ข้อมูลธุรกรรมไม่ถูกต้อง');
+          this.transactions = [];
+          return;
+        }
+
+        // ตรวจสอบและแสดงข้อมูลธุรกรรมเงินกู้
+        const loanTransactions = response.data.filter(t =>
+          t.transaction_status === 'loan_disbursement' || t.transaction_status === 'loan_repayment'
+        );
+        console.log('Loan transactions:', loanTransactions);
+
+        // ตรวจสอบว่ามีธุรกรรมเงินกู้หรือไม่
+        if (loanTransactions.length === 0) {
+          console.log('No loan transactions found');
+        }
+
+        // ตรวจสอบและแก้ไขข้อมูล amount ที่อาจไม่ถูกต้อง
+        this.transactions = response.data.map(transaction => {
+          // ตรวจสอบว่า amount เป็นค่าที่ถูกต้องหรือไม่
+          if (transaction.amount === undefined || transaction.amount === null) {
+            console.error('Transaction with undefined or null amount:', transaction);
+            transaction.amount = 0;
+          } else if (typeof transaction.amount === 'string') {
+            // แปลงค่า amount จาก string เป็น number
+            const parsedAmount = parseFloat(transaction.amount);
+            if (isNaN(parsedAmount)) {
+              console.error('Transaction with invalid amount string:', transaction);
+              transaction.amount = 0;
+            } else {
+              transaction.amount = parsedAmount;
+            }
+          }
+          return transaction;
+        });
       } catch (error) {
         console.error('Error fetching transactions:', error);
         alert('ไม่สามารถดึงข้อมูลธุรกรรมได้');
+        this.transactions = [];
       } finally {
         this.loading = false;
       }
@@ -269,7 +407,7 @@ export default {
       try {
         const response = await api.getAllUsers();
         const users = response.data.users;
-        
+
         // Create a map of user IDs to names
         this.users = users.reduce((map, user) => {
           map[user.user_id] = `${user.first_name} ${user.last_name}`;
@@ -277,6 +415,49 @@ export default {
         }, {});
       } catch (error) {
         console.error('Error fetching users:', error);
+      }
+    },
+
+    // เพิ่มเมธอดสำหรับดึงข้อมูลเงินกู้
+    async fetchLoans() {
+      try {
+        const response = await api.getLoans();
+        console.log('All loans data:', response.data);
+
+        // ตรวจสอบว่าข้อมูลที่ได้รับมาถูกต้องหรือไม่
+        if (!response.data || !Array.isArray(response.data)) {
+          console.error('Invalid loans data format:', response.data);
+          this.loans = [];
+          return;
+        }
+
+        // แปลงข้อมูลเงินกู้ให้อยู่ในรูปแบบที่ถูกต้อง
+        this.loans = response.data.map(loan => {
+          // ตรวจสอบว่า loan_balance เป็นค่าที่ถูกต้องหรือไม่
+          if (loan.loan_balance === undefined || loan.loan_balance === null) {
+            console.error('Loan with undefined or null loan_balance:', loan);
+            loan.loan_balance = 0;
+          } else if (typeof loan.loan_balance === 'string') {
+            // แปลงค่า loan_balance จาก string เป็น number
+            const parsedAmount = parseFloat(loan.loan_balance);
+            if (isNaN(parsedAmount)) {
+              console.error('Loan with invalid loan_balance string:', loan);
+              loan.loan_balance = 0;
+            } else {
+              loan.loan_balance = parsedAmount;
+            }
+          }
+
+          // เพิ่มชื่อผู้กู้
+          loan.borrower_name = `${loan.member_first_name || ''} ${loan.member_last_name || ''}`.trim() || 'ไม่ระบุชื่อ';
+
+          return loan;
+        });
+
+        console.log('Processed loans:', this.loans);
+      } catch (error) {
+        console.error('Error fetching loans:', error);
+        this.loans = [];
       }
     },
     sortBy(key) {
