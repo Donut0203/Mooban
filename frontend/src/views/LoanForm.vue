@@ -573,8 +573,7 @@ export default {
         console.log('Submitting loan data...');
 
         // แสดง loading message
-        const loadingMessage = 'กำลังบันทึกข้อมูล กรุณารอสักครู่...';
-        const loadingAlert = alert(loadingMessage);
+        console.log('กำลังบันทึกข้อมูล กรุณารอสักครู่...');
 
         // ใช้ api service แทน axios โดยตรง
         api.createLoan(formData)
@@ -610,9 +609,12 @@ export default {
                   const existingLoan = error.response.data.existingLoan;
                   const confirmRedirect = confirm(`${errorMessage}\n\nต้องการไปที่หน้าชำระเงินกู้หรือไม่?`);
                   if (confirmRedirect) {
-                    this.$router.push(`/loan-repayment?member_id=${this.loan.member_id}`);
+                    // ตรวจสอบว่า this.loan.member_id มีค่าหรือไม่
+                    const memberId = this.loan && this.loan.member_id ? this.loan.member_id : existingLoan.member_id;
+                    this.$router.push(`/loan-repayment?member_id=${memberId}`);
                     return;
                   }
+                  return; // ไม่ต้องแสดง alert อีก เพราะได้แสดง confirm แล้ว
                 }
               }
             }

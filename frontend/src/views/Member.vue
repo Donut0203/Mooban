@@ -814,7 +814,7 @@ export default {
         this.loadMembers();
       } catch (error) {
         console.error('Error deleting member:', error);
-        alert('ไม่สามารถลบข้อมูลสมาชิกได้');
+        alert('ไม่สามารถลบข้อมูลสมาชิกได้1234');
       }
     },
 

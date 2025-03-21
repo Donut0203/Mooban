@@ -231,42 +231,78 @@ router.post('/loan-repayment', verifyToken, async (req, res) => {
       [member_id, amount, req.userId, req.userId]
     );
     
-    // Update loan balance
+    // ตรวจสอบยอดเงินกู้คงเหลือในสัญญา
+    const [loanInfo] = await connection.query(
+      `SELECT loan_balance FROM loanagreement WHERE loan_id = ? AND member_id = ?`,
+      [loan_id, member_id]
+    );
+
+    if (loanInfo.length === 0) {
+      return res.status(404).json({ message: 'ไม่พบข้อมูลสัญญาเงินกู้' });
+    }
+
+    const currentLoanBalance = parseFloat(loanInfo[0].loan_balance);
+
+    // ตรวจสอบว่าจำนวนเงินที่ชำระไม่เกินยอดคงเหลือ
+    if (amount > currentLoanBalance) {
+      return res.status(400).json({
+        message: `ไม่สามารถชำระเงินเกินยอดคงเหลือได้ ยอดคงเหลือปัจจุบัน: ${currentLoanBalance} บาท`
+      });
+    }
+
+    // คำนวณยอดคงเหลือใหม่
+    const newLoanBalance = currentLoanBalance - amount;
+
+    // อัปเดตยอดเงินกู้ในตาราง loanagreement
+    await connection.query(
+      `UPDATE loanagreement
+       SET loan_balance = ?
+       WHERE loan_id = ?`,
+      [newLoanBalance, loan_id]
+    );
+
+    // อัปเดตยอดเงินกู้ในตาราง deposit_balance
     const [balanceResult] = await connection.query(
       `SELECT * FROM deposit_balance WHERE member_id = ?`,
       [member_id]
     );
-    
+
     if (balanceResult.length > 0) {
       // Update existing balance
       await connection.query(
-        `UPDATE deposit_balance 
-         SET loan_balance = loan_balance - ? 
+        `UPDATE deposit_balance
+         SET loan_balance = loan_balance - ?
          WHERE member_id = ?`,
         [amount, member_id]
       );
     } else {
       // Create new balance record
       await connection.query(
-        `INSERT INTO deposit_balance (member_id, loan_balance) 
+        `INSERT INTO deposit_balance (member_id, loan_balance)
          VALUES (?, ?)`,
-
         [member_id, -amount]
       );
     }
     
-    // Get updated balance
+    // Get updated balance from loanagreement
+    const [updatedLoan] = await connection.query(
+      `SELECT loan_balance FROM loanagreement WHERE loan_id = ?`,
+      [loan_id]
+    );
+
+    // Get updated balance from deposit_balance
     const [updatedBalance] = await connection.query(
       `SELECT * FROM deposit_balance WHERE member_id = ?`,
       [member_id]
     );
-    
+
     await connection.commit();
-    
+
     res.status(201).json({
       message: 'Loan repayment successful',
       transaction_id: result.insertId,
-      current_loan_balance: updatedBalance[0].loan_balance
+      current_loan_balance: updatedLoan[0].loan_balance,
+      total_loan_balance: updatedBalance[0].loan_balance
     });
   } catch (error) {
     await connection.rollback();

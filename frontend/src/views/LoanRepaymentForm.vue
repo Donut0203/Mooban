@@ -179,7 +179,7 @@ export default {
     },
     loanTransactions() {
       return this.transactions.filter(t =>
-        t.transaction_status === 'loan_withdrawal' || t.transaction_status === 'loan_repayment'
+        t.transaction_status === 'loan_disbursement' || t.transaction_status === 'loan_repayment'
       );
     }
   },
@@ -226,14 +226,30 @@ export default {
 
         // ดึงข้อมูลเงินกู้
         const loansResponse = await api.getLoans();
+
+        // ดึงข้อมูลสัญญาเงินกู้ทั้งหมดของสมาชิก (เพื่อตรวจสอบ)
+        const allMemberLoans = loansResponse.data.filter(loan =>
+          loan.member_id === parseInt(this.selectedMemberId)
+        );
+
+        console.log('All member loans:', allMemberLoans);
+
         // กรองเฉพาะสัญญาเงินกู้ของสมาชิกที่เลือกและมียอดคงเหลือมากกว่า 0
-        this.memberLoans = loansResponse.data.filter(loan =>
-          loan.member_id === parseInt(this.selectedMemberId) &&
+        this.memberLoans = allMemberLoans.filter(loan =>
           parseFloat(loan.loan_balance) > 0
         );
 
         // ตรวจสอบว่ามีข้อมูลเงินกู้หรือไม่
-        console.log('Member loans:', this.memberLoans);
+        console.log('Active member loans:', this.memberLoans);
+
+        // ตรวจสอบว่ามีสัญญาที่ชำระหมดแล้วหรือไม่
+        const paidLoans = allMemberLoans.filter(loan =>
+          parseFloat(loan.loan_balance) <= 0
+        );
+
+        if (paidLoans.length > 0) {
+          console.log('Paid loans:', paidLoans);
+        }
 
         // ดึงประวัติธุรกรรม
         const transactionsResponse = await api.getMemberTransactions(this.selectedMemberId);
@@ -295,7 +311,7 @@ export default {
       switch (type) {
         case 'loan_repayment':
           return 'ชำระเงินกู้';
-        case 'loan_withdrawal':
+        case 'loan_disbursement':
           return 'รับเงินกู้';
         default:
           return type;
@@ -316,36 +332,62 @@ export default {
         alert('กรุณากรอกข้อมูลให้ครบถ้วน');
         return;
       }
-      
+
+      // ตรวจสอบว่าสัญญาที่เลือกมียอดคงเหลือมากกว่า 0 หรือไม่
+      const selectedLoan = this.memberLoans.find(loan => loan.loan_id === parseInt(this.selectedLoanId));
+      if (!selectedLoan) {
+        alert('ไม่พบข้อมูลสัญญาเงินกู้ที่เลือก');
+        return;
+      }
+
+      if (parseFloat(selectedLoan.loan_balance) <= 0) {
+        alert('สัญญาเงินกู้นี้ได้ชำระครบถ้วนแล้ว');
+        this.loadMemberData(); // รีเฟรชข้อมูลเพื่อไม่ให้แสดงสัญญานี้อีก
+        return;
+      }
+
+      // ตรวจสอบว่าจำนวนเงินที่ชำระไม่เกินยอดคงเหลือ
+      if (parseFloat(this.amount) > parseFloat(selectedLoan.loan_balance)) {
+        alert(`ไม่สามารถชำระเงินเกินยอดคงเหลือได้ ยอดคงเหลือปัจจุบัน: ${this.formatCurrency(selectedLoan.loan_balance)}`);
+        return;
+      }
+
       try {
         const response = await api.repayLoan({
           member_id: this.selectedMemberId,
           loan_id: this.selectedLoanId,
           amount: parseFloat(this.amount)
         });
-        
+
         this.showSuccessResult(
           'ชำระเงินกู้สำเร็จ',
           `ชำระเงินกู้จำนวน ${this.formatCurrency(this.amount)} เรียบร้อยแล้ว`,
           response.data.current_loan_balance
         );
-        
+
         // รีเฟรชข้อมูล
         this.loadMemberData();
       } catch (error) {
         console.error('Error repaying loan:', error);
-        
+
         let errorMessage = 'ไม่สามารถชำระเงินกู้ได้ กรุณาลองใหม่อีกครั้ง';
         if (error.response && error.response.data && error.response.data.message) {
           errorMessage = error.response.data.message;
         }
-        
+
         this.showErrorResult('เกิดข้อผิดพลาด', errorMessage);
       }
     },
     showSuccessResult(title, message, balance) {
       this.resultModalTitle = title;
-      this.resultMessage = message;
+
+      // ตรวจสอบว่าชำระหมดแล้วหรือไม่
+      if (parseFloat(balance) <= 0) {
+        this.resultMessage = `${message}\nยินดีด้วย! คุณได้ชำระเงินกู้ครบถ้วนแล้ว`;
+      } else {
+        this.resultMessage = message;
+      }
+
       this.isSuccess = true;
       this.updatedBalance = balance;
       this.showResultModal = true;

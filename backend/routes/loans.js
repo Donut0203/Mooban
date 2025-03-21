@@ -59,6 +59,7 @@ router.post('/', verifyToken, async (req, res) => {
     const end_date = req.body.end_date || new Date().toISOString().split('T')[0]; // วันที่ปัจจุบัน
     const guarantee_required = req.body.guarantee_required || 1;
 
+
     // แปลง guarantors จาก JSON string เป็น object
     let guarantors = [];
     try {
@@ -72,6 +73,20 @@ router.post('/', verifyToken, async (req, res) => {
     // Validate required fields
     if (!member_id || !total_amount || !interest_rate || !repayment_period || !start_date || !end_date) {
       return res.status(400).json({ message: 'All required fields must be provided' });
+    }
+
+    // ตรวจสอบว่าสมาชิกมีสินเชื่อที่ยังไม่ได้ชำระหมดหรือไม่
+    const [existingLoans] = await db.query(
+      `SELECT * FROM loanagreement
+       WHERE member_id = ? AND loan_balance > 0`,
+      [member_id]
+    );
+
+    if (existingLoans.length > 0) {
+      return res.status(400).json({
+        message: 'สมาชิกนี้มีสินเชื่อที่ยังไม่ได้ชำระหมด กรุณาชำระสินเชื่อเดิมให้หมดก่อนเพิ่มสินเชื่อใหม่',
+        existingLoan: existingLoans[0]
+      });
     }
 
     // Insert loan data
@@ -89,7 +104,7 @@ router.post('/', verifyToken, async (req, res) => {
     await db.query(
       `INSERT INTO transactions (
         member_id, transaction_status, amount, created_by, updated_by
-      ) VALUES (?, 'loan_withdrawal', ?, ?, ?)`,
+      ) VALUES (?, 'loan_disbursement', ?, ?, ?)`,
 
       [member_id, total_amount, req.userId, req.userId]
     );

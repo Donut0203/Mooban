@@ -39,45 +39,12 @@
             </div>
           </div>
           
-          <div class="summary-card">
-            <div class="summary-icon events-icon">
-              <i class="fas fa-calendar-alt"></i>
-            </div>
-            <div class="summary-content">
-              <h3>กิจกรรมที่กำลังจะมาถึง</h3>
-              <div class="summary-value">{{ upcomingEvents }}</div>
-              <div class="summary-label">รายการ</div>
-            </div>
-          </div>
+     
           
-          <div class="summary-card">
-            <div class="summary-icon announcements-icon">
-              <i class="fas fa-bullhorn"></i>
-            </div>
-            <div class="summary-content">
-              <h3>ประกาศล่าสุด</h3>
-              <div class="summary-value">{{ recentAnnouncements }}</div>
-              <div class="summary-label">รายการ</div>
-            </div>
-          </div>
+       
         </div>
         
-        <!-- Recent Activity -->
-        <div class="dashboard-section">
-          <h2>กิจกรรมล่าสุด</h2>
-          <div class="activity-list">
-            <div class="activity-item" v-for="(activity, index) in recentActivities" :key="index">
-              <div class="activity-icon" :class="activity.type + '-icon'">
-                <i :class="'fas ' + activity.icon"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">{{ activity.title }}</div>
-                <div class="activity-description">{{ activity.description }}</div>
-                <div class="activity-time">{{ activity.time }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+
         
         <!-- Quick Actions -->
         <div class="dashboard-section">
@@ -100,7 +67,7 @@
             
             <router-link to="/" class="action-button">
               <i class="fas fa-newspaper"></i>
-              <span>ดูข่าวสาร</span>
+              <span>กลุ่มออมทรัพย์เพื่อการผลิต หมู่บ้านเขาแหลม</span>
             </router-link>
           </div>
         </div>
@@ -152,7 +119,7 @@
           }
         } catch (error) {
           console.error('Error fetching dashboard data:', error);
-          this.error = 'ไม่สามารถโหลดข้อมูลแดชบอร์ดได้ กำลังใช้ข้อมูลสำรอง';
+          this.error = 'กำลังใช้ข้อมูลสำรอง';
   
           // Use fallback data if API fails
           this.fetchFallbackData();
