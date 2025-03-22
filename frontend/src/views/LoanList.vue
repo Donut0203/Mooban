@@ -24,20 +24,26 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="loan in filteredLoans" :key="loan.loan_id">
-            <td>{{ loan.loan_id }}</td>
-            <td>{{ loan.borrower_name }}</td>
-            <td>{{ formatCurrency(loan.loan_balance) }}</td>
-            <td>{{ loan.interest_rate }}%</td>
-            <td>{{ loan.repayment_period }} เดือน</td>
-            <td>{{ formatDate(loan.start_date) }}</td>
-            <td>{{ formatDate(loan.end_date) }}</td>
-            <td class="actions">
-              <button class="btn-view" @click="viewLoan(loan)">ดู</button>
-              <button class="btn-edit" @click="editLoan(loan)">แก้ไข</button>
-              <button class="btn-delete" @click="confirmDelete(loan)">ลบ</button>
-            </td>
-          </tr>
+        <tr v-for="loan in filteredLoans" :key="loan.loan_id">
+          <td>{{ loan.loan_id }}</td>
+          <td>{{ loan.borrower_name }}</td>
+          <td>{{ formatCurrency(loan.loan_balance) }}</td>
+          <td>{{ loan.interest_rate }}%</td>
+          <td>{{ loan.repayment_period }} เดือน</td>
+          <td>{{ formatDate(loan.start_date) }}</td>
+          <td>{{ formatDate(loan.end_date) }}</td>
+          <td class="actions">
+            <button class="btn-view" @click="viewLoan(loan)">ดู</button>
+          <button 
+                class="btn-delete" 
+                @click="confirmDelete(loan)" 
+                :disabled="loan.loan_balance > 0"
+                :class="{ 'disabled-btn': loan.loan_balance > 0 }"
+              >
+                ลบ
+              </button>
+          </td>
+        </tr>
           <tr v-if="loans.length === 0">
             <td colspan="8" class="no-data">ไม่พบข้อมูลสินเชื่อ</td>
           </tr>
@@ -428,6 +434,11 @@ h1 {
   color: #2c3e50;
   font-size: 28px;
   margin: 0;
+}
+
+.disabled-btn {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 /* สไตล์ปุ่ม */
