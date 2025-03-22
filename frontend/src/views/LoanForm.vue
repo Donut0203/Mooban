@@ -38,15 +38,29 @@
             <option value="อื่นๆ">อื่นๆ</option>
           </select>
         </div>
-    
+
         <div>
           <label for="account_number">เลขบัญชี *</label>
-          <input v-model="loan.account_number" type="text" id="account_number" required />
+          <input 
+            v-model="loan.account_number" 
+            type="text" 
+            id="account_number" 
+            :maxlength="accountNumberMaxLength"
+            @input="loan.account_number = loan.account_number.replace(/\D/g, '').slice(0, accountNumberMaxLength)" 
+            required 
+          />
         </div>
     
         <div>
           <label for="id_card">เลขบัตรประชาชน *</label>
-          <input v-model="loan.id_card" type="text" id="id_card" required />
+          <input 
+            v-model="loan.id_card" 
+            type="text" 
+            id="id_card" 
+            maxlength="13" 
+            @input="loan.id_card = loan.id_card.replace(/\D/g, '').slice(0, 13)" 
+            required 
+          />
         </div>
     
         <div>
@@ -267,6 +281,19 @@ export default {
       ],
     };
     },
+  computed: {
+    accountNumberMaxLength() {
+      const bankLengths = {
+        'กรุงเทพ': 10,
+        'กสิกรไทย': 10,
+        'กรุงไทย': 10,
+        'ไทยพาณิชย์': 10,
+        'ออมสิน': 12,
+        'ธกส': 13
+      };
+      return bankLengths[this.loan.bank_name] || 15; // ค่า default ถ้าเลือก 'อื่นๆ'
+    }
+  },
   created() {
     // ดึงข้อมูลสมาชิกทั้งหมดเมื่อโหลดหน้า
     this.fetchMembers();

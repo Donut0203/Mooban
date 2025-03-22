@@ -53,11 +53,19 @@
                 <option value="อื่นๆ">อื่นๆ</option>
               </select>
             </div>
-            
-            <div class="form-group">
-              <label for="bank_account">หมายเลขบัญชีธนาคาร <span class="required">*</span></label>
-              <input type="text" id="bank_account" v-model="formData.bank_account" required>
-            </div>
+
+
+        <div>
+          <label for="bank_account">หมายเลขบัญชีธนาคาร *</label>
+          <input 
+            v-model="formData.bank_account" 
+            type="text" 
+            id="bank_account" 
+            :maxlength="bankNumberMaxLength"
+            @input="formData.bank_account = formData.bank_account.replace(/\D/g, '').slice(0, bankNumberMaxLength)" 
+            required 
+          />
+        </div>
             
             <div class="form-group">
               <label for="address_line1">ที่อยู่ <span class="required">*</span></label>
@@ -347,6 +355,17 @@ export default {
           member.phone.includes(this.searchQuery)
         );
       });
+    },
+    bankNumberMaxLength() {
+      const bankLengths = {
+        'กรุงเทพ': 10,
+        'กสิกรไทย': 10,
+        'กรุงไทย': 10,
+        'ไทยพาณิชย์': 10,
+        'ออมสิน': 12,
+        'ธกส': 13
+      };
+      return bankLengths[this.formData.bank_name] || 15; // ค่า default ถ้าเลือก 'อื่นๆ'
     }
   },
   mounted() {
