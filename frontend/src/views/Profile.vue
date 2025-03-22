@@ -20,7 +20,8 @@
         
         <div class="form-group">
           <label for="phone">เบอร์โทรศัพท์</label>
-          <input type="tel" id="phone" v-model="userProfile.phone">
+          <input type="tel" id="phone" v-model="userProfile.phone" placeholder="0xxxxxxxxx">
+          <div class="phone-hint">เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก</div>
         </div>
         
         <div class="form-group">
@@ -97,23 +98,45 @@ export default {
         });
     },
     
+    validatePhoneNumber(phone) {
+      // ถ้าไม่มีเบอร์โทรศัพท์ ไม่ต้องตรวจสอบ
+      if (!phone || phone.trim() === '') {
+        return null;
+      }
+
+      // ตรวจสอบว่าเบอร์โทรศัพท์ขึ้นต้นด้วย 0 และมีความยาว 10 หลัก
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        return 'เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก';
+      }
+
+      return null; // ไม่มีข้อผิดพลาด
+    },
+
     async saveProfile() {
       try {
+        // ตรวจสอบเบอร์โทรศัพท์
+        const phoneError = this.validatePhoneNumber(this.userProfile.phone);
+        if (phoneError) {
+          alert(phoneError);
+          return;
+        }
+
         await api.updateUserProfile({
           firstName: this.userProfile.firstName,
           lastName: this.userProfile.lastName,
           phone: this.userProfile.phone,
           address: this.userProfile.address
         });
-        
+
         // บันทึกข้อมูลลง localStorage
         localStorage.setItem('userFirstName', this.userProfile.firstName);
         localStorage.setItem('userLastName', this.userProfile.lastName);
         localStorage.setItem('userPhone', this.userProfile.phone);
         localStorage.setItem('userAddress', this.userProfile.address);
-        
+
         alert('อัปเดตโปรไฟล์เรียบร้อยแล้ว');
-        
+
       } catch (error) {
         console.error('Error updating profile:', error);
         alert('ไม่สามารถอัปเดตโปรไฟล์ได้ กรุณาลองใหม่อีกครั้ง');
@@ -192,6 +215,13 @@ textarea {
 input:disabled, textarea:disabled {
   background-color: #f5f5f5;
   cursor: not-allowed;
+}
+
+.phone-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 0;
 }
 
 .form-actions {

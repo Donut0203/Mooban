@@ -26,7 +26,8 @@
             
             <div class="form-group">
               <label for="phone">เบอร์โทรศัพท์ <span class="required">*</span></label>
-              <input type="text" id="phone" v-model="formData.phone" required>
+              <input type="text" id="phone" v-model="formData.phone" required placeholder="0xxxxxxxxx">
+              <div class="form-hint">เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก</div>
             </div>
             
             <div class="form-group">
@@ -459,9 +460,26 @@ export default {
       }
     },
 
+    // ตรวจสอบเบอร์โทรศัพท์
+    validatePhoneNumber(phone) {
+      // ตรวจสอบว่าเบอร์โทรศัพท์ขึ้นต้นด้วย 0 และมีความยาว 10 หลัก
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        return 'เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก';
+      }
+      return null; // ไม่มีข้อผิดพลาด
+    },
+
     // ส่งฟอร์ม
     async submitForm() {
       try {
+        // ตรวจสอบเบอร์โทรศัพท์
+        const phoneError = this.validatePhoneNumber(this.formData.phone);
+        if (phoneError) {
+          alert(phoneError);
+          return;
+        }
+
         // บันทึกรูปภาพลงใน localStorage ก่อนส่งข้อมูลไปยังเซิร์ฟเวอร์
         if (this.formData.id_card_copy && this.formData.id_card_copy.startsWith('data:image')) {
           console.log('Saving ID card to localStorage');

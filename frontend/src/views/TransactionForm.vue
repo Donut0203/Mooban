@@ -48,6 +48,7 @@
           <div class="balance-label">ยอดเงินรวม (เงินต้น+ดอกเบี้ย):</div>
           <div class="balance-value loan">{{ formatCurrency(totalLoanAmount) }}</div>
         </div>
+     
       </div>
     </div>
     

@@ -66,11 +66,15 @@
         
         <div class="form-group">
           <label for="phone">เบอร์โทรศัพท์</label>
-          <input 
-            type="tel" 
-            id="phone" 
+          <input
+            type="tel"
+            id="phone"
             v-model="userProfile.phone"
+            placeholder="0xxxxxxxxx"
+            :class="{ 'error': errors.phone }"
           >
+          <span v-if="errors.phone" class="error-text">{{ errors.phone }}</span>
+          <p class="phone-hint">เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก</p>
         </div>
         
         <div class="form-group">
@@ -141,7 +145,8 @@ export default {
       isLoading: false,
       errors: {
         firstName: '',
-        lastName: ''
+        lastName: '',
+        phone: ''
       },
       alert: {
         show: false,
@@ -276,17 +281,27 @@ export default {
       let isValid = true;
       this.errors.firstName = '';
       this.errors.lastName = '';
-      
+      this.errors.phone = '';
+
       if (!this.userProfile.firstName.trim()) {
         this.errors.firstName = 'กรุณากรอกชื่อ';
         isValid = false;
       }
-      
+
       if (!this.userProfile.lastName.trim()) {
         this.errors.lastName = 'กรุณากรอกนามสกุล';
         isValid = false;
       }
-      
+
+      // ตรวจสอบเบอร์โทรศัพท์
+      if (this.userProfile.phone && this.userProfile.phone.trim() !== '') {
+        const phoneRegex = /^0\d{9}$/;
+        if (!phoneRegex.test(this.userProfile.phone)) {
+          this.errors.phone = 'เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก';
+          isValid = false;
+        }
+      }
+
       return isValid;
     },
     
@@ -753,6 +768,13 @@ input.error {
   font-size: 14px;
   margin-top: 5px;
   display: block;
+}
+
+.phone-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 0;
 }
 
 textarea {

@@ -17,7 +17,10 @@
         </div>
         <div class="form-group">
           <label for="phone">Phone Number</label>
-          <input type="tel" id="phone" v-model="phone" name="phone">
+          <input type="tel" id="phone" v-model="phone" name="phone" placeholder="0xxxxxxxxx">
+          <p class="phone-requirements">
+            Phone number must start with 0 and be 10 digits long.
+          </p>
         </div>
         <div class="form-group">
           <label for="address">Address</label>
@@ -135,6 +138,20 @@ export default {
 
       return null; // No error
     },
+    validatePhoneNumber(phone) {
+      // Check if phone is provided
+      if (!phone || phone.trim() === '') {
+        return null; // Phone is optional, so no error if empty
+      }
+
+      // Check if phone starts with 0 and is 10 digits long
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        return 'Phone number must start with 0 and be 10 digits long';
+      }
+
+      return null; // No error
+    },
     async handleRegister() {
       // Validate email (must be lowercase)
       const emailError = this.validateEmail(this.email);
@@ -147,6 +164,13 @@ export default {
       const passwordError = this.validatePassword(this.password);
       if (passwordError) {
         this.error = passwordError;
+        return;
+      }
+
+      // Validate phone number
+      const phoneError = this.validatePhoneNumber(this.phone);
+      if (phoneError) {
+        this.error = phoneError;
         return;
       }
 
@@ -268,7 +292,7 @@ input:focus {
   outline: none;
 }
 
-.password-requirements {
+.password-requirements, .phone-requirements {
   font-size: 12px;
   color: #666;
   margin-top: 5px;

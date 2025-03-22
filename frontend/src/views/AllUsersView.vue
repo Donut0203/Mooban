@@ -152,7 +152,9 @@
           </div>
           <div class="form-group">
             <label for="phone">Phone</label>
-            <input type="tel" id="phone" v-model="editingUser.phone">
+            <input type="tel" id="phone" v-model="editingUser.phone" placeholder="0xxxxxxxxx" :class="{ 'error': phoneError }">
+            <span v-if="phoneError" class="error-text">{{ phoneError }}</span>
+            <p class="phone-hint">เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก</p>
           </div>
           <div class="form-group">
             <label for="address">Address</label>
@@ -209,7 +211,8 @@ export default {
       selectedUser: null,
       editingUser: null,
       userToDelete: null,
-      currentUserStatus: localStorage.getItem('userStatus') || ''
+      currentUserStatus: localStorage.getItem('userStatus') || '',
+      phoneError: ''
     };
   },
   computed: {
@@ -354,11 +357,33 @@ export default {
     },
     editUser(user) {
       this.editingUser = { ...user };
+      this.phoneError = ''; // Reset phone error when opening edit form
     },
     cancelEdit() {
       this.editingUser = null;
     },
+    validatePhoneNumber(phone) {
+      // ถ้าไม่มีเบอร์โทรศัพท์ ไม่ต้องตรวจสอบ
+      if (!phone || phone.trim() === '') {
+        return '';
+      }
+
+      // ตรวจสอบว่าเบอร์โทรศัพท์ขึ้นต้นด้วย 0 และมีความยาว 10 หลัก
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        return 'เบอร์โทรศัพท์ต้องขึ้นต้นด้วย 0 และมีความยาว 10 หลัก';
+      }
+
+      return ''; // ไม่มีข้อผิดพลาด
+    },
+
     async saveUser() {
+      // ตรวจสอบเบอร์โทรศัพท์
+      this.phoneError = this.validatePhoneNumber(this.editingUser.phone);
+      if (this.phoneError) {
+        return; // ไม่บันทึกถ้ามีข้อผิดพลาด
+      }
+
       try {
         // Check if status is being changed to 'pending'
         const isPendingStatus = this.editingUser.status === 'pending';
@@ -379,6 +404,7 @@ export default {
         }
 
         this.editingUser = null;
+        this.phoneError = '';
 
         // If status was changed to 'pending', inform the user and refresh the page
         if (isPendingStatus) {
@@ -674,6 +700,24 @@ h1 {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
+}
+
+.form-group input.error {
+  border-color: #d32f2f;
+}
+
+.error-text {
+  color: #d32f2f;
+  font-size: 14px;
+  margin-top: 5px;
+  display: block;
+}
+
+.phone-hint {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  margin-bottom: 0;
 }
 
 .form-group textarea {
