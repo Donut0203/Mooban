@@ -37,7 +37,15 @@
 
             <div class="form-group">
               <label for="national_id">หมายเลขบัตรประชาชน <span class="required">*</span></label>
-              <input type="text" id="national_id" v-model="formData.national_id" required>
+          <input 
+            v-model="formData.national_id" 
+            type="text" 
+            id="national_id" 
+            maxlength="13" 
+            @input="formData.national_id = formData.national_id.replace(/\D/g, '').slice(0, 13)" 
+            required 
+          />
+
             </div>
             
             <div class="form-group">
