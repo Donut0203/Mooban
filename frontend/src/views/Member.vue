@@ -104,7 +104,7 @@
               </div>
             </div>
             
-            <div class="form-group">
+            <!-- <div class="form-group">
               <label for="id_card_copy">สำเนาบัตรประชาชน <span class="required">*</span></label>
               <input type="file" id="id_card_copy" @change="handleIdCardUpload">
               <div class="preview" v-if="formData.id_card_copy">
@@ -118,7 +118,7 @@
               <div class="preview" v-if="formData.house_registration_copy">
                 <img :src="formData.house_registration_copy" alt="สำเนาทะเบียนบ้าน">
               </div>
-            </div>
+            </div> -->
             
             <div class="form-group" v-if="isEditing">
               <label for="deposit_balance">ยอดเงินฝาก</label>
@@ -265,7 +265,7 @@
               <router-link :to="'/transactions?member_id=' + selectedMember.member_id">ดูประวัติธุรกรรมทั้งหมด</router-link>
             </div>
           </div>
-          <div class="detail-row">
+          <!-- <div class="detail-row">
             <div class="detail-label">สำเนาบัตรประชาชน:</div>
             <div class="detail-value">
               <img :src="selectedMember.id_card_copy" alt="สำเนาบัตรประชาชน" class="document-preview">
@@ -276,7 +276,7 @@
             <div class="detail-value">
               <img :src="selectedMember.house_registration_copy" alt="สำเนาทะเบียนบ้าน" class="document-preview">
             </div>
-          </div>
+          </div> -->
           <div class="detail-row">
             <div class="detail-label">ผู้สร้างข้อมูล:</div>
             <div class="detail-value">{{ selectedMember.created_by }}</div>
@@ -706,15 +706,17 @@ export default {
       // สร้าง STYLE element
       const style = printWindow.document.createElement('style');
       style.textContent = `
-        body { font-family: "Sarabun", sans-serif; padding: 20px; line-height: 1.5; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .member-info { margin-bottom: 30px; }
-        .info-row { display: flex; margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px; }
-        .label { font-weight: bold; width: 200px; }
-        .value { flex: 1; }
-        .documents { margin-top: 30px; }
-        .document-section { margin-bottom: 30px; }
-        .document-image { max-width: 100%; height: auto; margin-top: 10px; border: 1px solid #ddd; page-break-inside: avoid; }
+        body { font-family: "Sarabun", sans-serif; padding: 20px; line-height: 1.8; font-size: 24px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 36px; margin-bottom: 15px; font-weight: bold; }
+        .member-info { margin-bottom: 40px; }
+        .info-row { display: flex; margin-bottom: 15px; border-bottom: 1px dotted #ccc; padding-bottom: 10px; }
+        .label { font-weight: bold; width: 250px; font-size: 26px; }
+        .value { flex: 1; font-size: 26px; }
+        .documents { margin-top: 40px; }
+        .document-section { margin-bottom: 40px; }
+        .document-section h3 { font-size: 30px; }
+        .document-image { max-width: 100%; height: auto; margin-top: 15px; border: 1px solid #ddd; page-break-inside: avoid; }
         @media print { .no-print { display: none; } img { display: block; page-break-inside: avoid; max-width: 100% !important; } }
       `;
       head.appendChild(style);
@@ -765,41 +767,41 @@ export default {
       memberInfo.appendChild(createInfoRow('ที่อยู่:', formattedAddress || '-'));
       // memberInfo.appendChild(createInfoRow('ยอดคงเหลือ:', formattedBalance || '0.00 บาท'));
 
-      // สร้าง DOCUMENTS
-      const documents = printWindow.document.createElement('div');
-      documents.className = 'documents';
-      const h2 = printWindow.document.createElement('h2');
-      h2.textContent = 'เอกสารแนบ';
-      documents.appendChild(h2);
-      body.appendChild(documents);
+      // // สร้าง DOCUMENTS
+      // const documents = printWindow.document.createElement('div');
+      // documents.className = 'documents';
+      // const h2 = printWindow.document.createElement('h2');
+      // h2.textContent = 'เอกสารแนบ';
+      // documents.appendChild(h2);
+      // body.appendChild(documents);
 
-      // สร้างฟังก์ชันสำหรับสร้าง document section
-      const createDocumentSection = (title, imageSrc, alt) => {
-        const section = printWindow.document.createElement('div');
-        section.className = 'document-section';
+      // // สร้างฟังก์ชันสำหรับสร้าง document section
+      // const createDocumentSection = (title, imageSrc, alt) => {
+      //   const section = printWindow.document.createElement('div');
+      //   section.className = 'document-section';
 
-        const h3 = printWindow.document.createElement('h3');
-        h3.textContent = title;
-        section.appendChild(h3);
+      //   const h3 = printWindow.document.createElement('h3');
+      //   h3.textContent = title;
+      //   section.appendChild(h3);
 
-        if (imageSrc) {
-          const img = printWindow.document.createElement('img');
-          img.src = imageSrc;
-          img.alt = alt;
-          img.className = 'document-image';
-          section.appendChild(img);
-        } else {
-          const p = printWindow.document.createElement('p');
-          p.textContent = `ไม่มีไฟล์${alt}`;
-          section.appendChild(p);
-        }
+      //   if (imageSrc) {
+      //     const img = printWindow.document.createElement('img');
+      //     img.src = imageSrc;
+      //     img.alt = alt;
+      //     img.className = 'document-image';
+      //     section.appendChild(img);
+      //   } else {
+      //     const p = printWindow.document.createElement('p');
+      //     p.textContent = `ไม่มีไฟล์${alt}`;
+      //     section.appendChild(p);
+      //   }
 
-        return section;
-      };
+      //   return section;
+      // };
 
-      // เพิ่ม document sections
-      documents.appendChild(createDocumentSection('สำเนาบัตรประชาชน', hasIdCard ? member.id_card_copy : null, 'สำเนาบัตรประชาชน'));
-      documents.appendChild(createDocumentSection('สำเนาทะเบียนบ้าน', hasHouseReg ? member.house_registration_copy : null, 'สำเนาทะเบียนบ้าน'));
+      // // เพิ่ม document sections
+      // documents.appendChild(createDocumentSection('สำเนาบัตรประชาชน', hasIdCard ? member.id_card_copy : null, 'สำเนาบัตรประชาชน'));
+      // documents.appendChild(createDocumentSection('สำเนาทะเบียนบ้าน', hasHouseReg ? member.house_registration_copy : null, 'สำเนาทะเบียนบ้าน'));
 
       // สร้างปุ่มพิมพ์
       const printButtonDiv = printWindow.document.createElement('div');
@@ -859,7 +861,7 @@ export default {
         this.loadMembers();
       } catch (error) {
         console.error('Error deleting member:', error);
-        alert('ไม่สามารถลบข้อมูลสมาชิกได้1234');
+        alert('ไม่สามารถลบข้อมูลสมาชิกได้ เพราะติดเงื่อนไขทางระบบ');
       }
     },
 

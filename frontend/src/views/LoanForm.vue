@@ -116,7 +116,7 @@
         </div>
     
         <!-- ข้อมูลและเอกสารผู้กู้ -->
-        <div class="borrower-section">
+        <!-- <div class="borrower-section">
           <h4>เอกสารผู้กู้</h4>
           <div>
             <label for="id_card_image">สำเนาบัตรประชาชน ผู้กู้ *</label>
@@ -127,7 +127,7 @@
             <label for="house_registration_image">สำเนาทะเบียนบ้าน ผู้กู้ *</label>
             <input type="file" id="house_registration_image" @change="handleHouseRegistrationUpload" required />
           </div>
-        </div>
+        </div> -->
 
         <!-- ข้อมูลผู้ค้ำประกัน -->
         <h3>ข้อมูลผู้ค้ำประกัน</h3>
@@ -162,16 +162,17 @@
           </div>
 
           <!-- อัพโหลดเอกสารผู้ค้ำประกันคนที่ 1 -->
-          <div>
+          <!-- <div>
             <label for="guarantor1_id_card_image">สำเนาบัตรประชาชน ผู้ค้ำประกันคนที่ 1 *</label>
             <input type="file" id="guarantor1_id_card_image" @change="handleGuarantor1IdCardUpload" required />
-          </div>
+          </div> -->
 
-          <div>
+          <!-- <div>
             <label for="guarantor1_house_registration_image">สำเนาทะเบียนบ้าน ผู้ค้ำประกันคนที่ 1 *</label>
             <input type="file" id="guarantor1_house_registration_image" @change="handleGuarantor1HouseRegistrationUpload" required />
-          </div>
-        </div> <!-- ปิด guarantor-section -->
+          </div> -->
+
+        </div> 
 
         <!-- ผู้ค้ำประกันคนที่ 2 -->
         <div class="guarantor-section">
@@ -203,7 +204,7 @@
           </div>
 
           <!-- อัพโหลดเอกสารผู้ค้ำประกันคนที่ 2 -->
-          <div>
+          <!-- <div>
             <label for="guarantor2_id_card_image">สำเนาบัตรประชาชน ผู้ค้ำประกันคนที่ 2 *</label>
             <input type="file" id="guarantor2_id_card_image" @change="handleGuarantor2IdCardUpload" required />
           </div>
@@ -211,7 +212,7 @@
           <div>
             <label for="guarantor2_house_registration_image">สำเนาทะเบียนบ้าน ผู้ค้ำประกันคนที่ 2 *</label>
             <input type="file" id="guarantor2_house_registration_image" @change="handleGuarantor2HouseRegistrationUpload" required />
-          </div>
+          </div> -->
         </div> <!-- ปิด guarantor-section -->
     
         <!-- ปุ่มการกระทำ -->
@@ -405,50 +406,52 @@ export default {
       return parts.join(' ');
     },
 
-    // อัพโหลดเอกสารผู้กู้
-    handleIdCardUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.loan.id_card_image = file;
-      }
-    },
+    
 
-    handleHouseRegistrationUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.loan.house_registration_image = file;
-      }
-    },
+    // // อัพโหลดเอกสารผู้กู้
+    // handleIdCardUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.loan.id_card_image = file;
+    //   }
+    // },
 
-    // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 1
-    handleGuarantor1IdCardUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.guarantors[0].id_card_image = file;
-      }
-    },
+    // handleHouseRegistrationUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.loan.house_registration_image = file;
+    //   }
+    // },
 
-    handleGuarantor1HouseRegistrationUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.guarantors[0].house_registration_image = file;
-      }
-    },
+    // // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 1
+    // handleGuarantor1IdCardUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.guarantors[0].id_card_image = file;
+    //   }
+    // },
 
-    // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 2
-    handleGuarantor2IdCardUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.guarantors[1].id_card_image = file;
-      }
-    },
+    // handleGuarantor1HouseRegistrationUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.guarantors[0].house_registration_image = file;
+    //   }
+    // },
 
-    handleGuarantor2HouseRegistrationUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.guarantors[1].house_registration_image = file;
-      }
-    },
+    // // อัพโหลดเอกสารผู้ค้ำประกันคนที่ 2
+    // handleGuarantor2IdCardUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.guarantors[1].id_card_image = file;
+    //   }
+    // },
+
+    // handleGuarantor2HouseRegistrationUpload(event) {
+    //   const file = event.target.files[0];
+    //   if (file) {
+    //     this.guarantors[1].house_registration_image = file;
+    //   }
+    // },
 
     // คำนวณดอกเบี้ยต่อเดือนอัตโนมัติ (1% ของเงินต้น) และตั้งค่าอื่นๆ
     calculateMonthlyInterest() {
@@ -528,23 +531,23 @@ export default {
         return;
       }
 
-      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้กู้หรือไม่
-      if (!this.loan.id_card_image || !this.loan.house_registration_image) {
-        alert('กรุณาอัพโหลดเอกสารของผู้กู้ให้ครบถ้วน');
-        return;
-      }
+      // // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้กู้หรือไม่
+      // if (!this.loan.id_card_image || !this.loan.house_registration_image) {
+      //   alert('กรุณาอัพโหลดเอกสารของผู้กู้ให้ครบถ้วน');
+      //   return;
+      // }
 
-      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 1 หรือไม่
-      if (!this.guarantors[0].id_card_image || !this.guarantors[0].house_registration_image) {
-        alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 1 ให้ครบถ้วน');
-        return;
-      }
+      // // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 1 หรือไม่
+      // if (!this.guarantors[0].id_card_image || !this.guarantors[0].house_registration_image) {
+      //   alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 1 ให้ครบถ้วน');
+      //   return;
+      // }
 
-      // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 2 หรือไม่
-      if (!this.guarantors[1].id_card_image || !this.guarantors[1].house_registration_image) {
-        alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 2 ให้ครบถ้วน');
-        return;
-      }
+      // // ตรวจสอบว่ามีการอัพโหลดไฟล์ของผู้ค้ำประกันคนที่ 2 หรือไม่
+      // if (!this.guarantors[1].id_card_image || !this.guarantors[1].house_registration_image) {
+      //   alert('กรุณาอัพโหลดเอกสารของผู้ค้ำประกันคนที่ 2 ให้ครบถ้วน');
+      //   return;
+      // }
 
       console.log('Form validation passed, preparing to submit...');
 
@@ -559,9 +562,9 @@ export default {
         }
       });
 
-      // เพิ่มไฟล์ของผู้กู้
-      formData.append('borrower_id_card_image', this.loan.id_card_image);
-      formData.append('borrower_house_registration_image', this.loan.house_registration_image);
+      // // เพิ่มไฟล์ของผู้กู้
+      // formData.append('borrower_id_card_image', this.loan.id_card_image);
+      // formData.append('borrower_house_registration_image', this.loan.house_registration_image);
 
       // เพิ่มข้อมูลผู้ค้ำประกัน - ส่งเป็น JSON string แทน
       formData.append('guarantors', JSON.stringify(this.guarantors.map(g => ({
@@ -571,15 +574,15 @@ export default {
         address: g.address
       }))));
 
-      // เพิ่มไฟล์ของผู้ค้ำประกัน
-      this.guarantors.forEach((guarantor, index) => {
-        if (guarantor.id_card_image) {
-          formData.append(`guarantor${index+1}_id_card_image`, guarantor.id_card_image);
-        }
-        if (guarantor.house_registration_image) {
-          formData.append(`guarantor${index+1}_house_registration_image`, guarantor.house_registration_image);
-        }
-      });
+      // // เพิ่มไฟล์ของผู้ค้ำประกัน
+      // this.guarantors.forEach((guarantor, index) => {
+      //   if (guarantor.id_card_image) {
+      //     formData.append(`guarantor${index+1}_id_card_image`, guarantor.id_card_image);
+      //   }
+      //   if (guarantor.house_registration_image) {
+      //     formData.append(`guarantor${index+1}_house_registration_image`, guarantor.house_registration_image);
+      //   }
+      // });
 
       // แสดงข้อมูลที่จะส่งไปยัง backend
       console.log('Form data prepared for submission:');
@@ -686,14 +689,14 @@ export default {
       };
 
       // Reset file input elements ของผู้กู้
-      document.getElementById('id_card_image').value = '';
-      document.getElementById('house_registration_image').value = '';
+      // document.getElementById('id_card_image').value = '';
+      // document.getElementById('house_registration_image').value = '';
 
-      // Reset file input elements ของผู้ค้ำประกัน
-      document.getElementById('guarantor1_id_card_image').value = '';
-      document.getElementById('guarantor1_house_registration_image').value = '';
-      document.getElementById('guarantor2_id_card_image').value = '';
-      document.getElementById('guarantor2_house_registration_image').value = '';
+      // // Reset file input elements ของผู้ค้ำประกัน
+      // document.getElementById('guarantor1_id_card_image').value = '';
+      // document.getElementById('guarantor1_house_registration_image').value = '';
+      // document.getElementById('guarantor2_id_card_image').value = '';
+      // document.getElementById('guarantor2_house_registration_image').value = '';
 
       // รีเซ็ตข้อมูลผู้ค้ำประกัน
       this.guarantors = [
